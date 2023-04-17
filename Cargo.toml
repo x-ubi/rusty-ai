@@ -1,8 +1,18 @@
 [package]
 name = "rusty-ai"
+description = "Rust Library for Machine Learning"
+authors = ["Jan Budziński <jan.budzinski.stud@pw.edu.pl>"]
 version = "0.1.0"
 edition = "2021"
+license = "Apache-2.0"
+readme = "README.md"
+
+
+exclude = [
+    ".gitignore"
+]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+rand = "0.8.5"
