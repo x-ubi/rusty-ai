@@ -1,1 +1,1 @@
-pub mod decision_trees;
+pub mod bayes;
