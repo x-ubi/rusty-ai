@@ -57,11 +57,12 @@ impl GaussianNB {
         for class in self.class_freq.keys() {
             let mean = self.class_mean.get(class).unwrap();
             let variance = self.class_variance.get(class).unwrap();
+            let variance_epsilon = DVector::<f64>::from_element(variance.len(), 1e-9);
 
             let log_likelihood = -0.5
                 * ((x - mean)
                     .component_mul(&(x - mean))
-                    .component_div(&(variance.scale(2.0))))
+                    .component_div(&(variance.scale(2.0) + variance_epsilon)))
                 .sum()
                 - 0.5 * variance.map(|v| v.ln()).sum()
                 + self.class_freq.get(class).unwrap().ln();
