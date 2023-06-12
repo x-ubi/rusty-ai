@@ -62,9 +62,9 @@ impl GaussianNB {
             let log_likelihood = -0.5
                 * ((x - mean)
                     .component_mul(&(x - mean))
-                    .component_div(&(variance.scale(2.0) + variance_epsilon)))
+                    .component_div(&(variance.scale(2.0) + &variance_epsilon)))
                 .sum()
-                - 0.5 * variance.map(|v| v.ln()).sum()
+                - 0.5 * (variance + &variance_epsilon).map(|v| v.ln()).sum()
                 + self.class_freq.get(class).unwrap().ln();
 
             if log_likelihood > max_log_likelihood {
@@ -173,6 +173,24 @@ mod tests {
         let pred_y = clf.predict(&test_x);
 
         assert_eq!(pred_y, DVector::from_column_slice(&[0, 0]));
+    }
+
+    #[test]
+    fn test_predict_with_constant_feature() {
+        let mut model = GaussianNB::new();
+
+        let x = DMatrix::from_row_slice(4, 2, &[0.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0]);
+        let y = DVector::from_vec(vec![0, 0, 1, 1]);
+
+        let x_new = DMatrix::from_row_slice(2, 2, &[0.0, 1.0, 1.0, 1.0]);
+
+        model.fit(&x, &y);
+
+        let y_hat = model.predict(&x_new);
+
+        assert_eq!(y_hat.len(), 2);
+        assert_eq!(y_hat[0], 0);
+        assert_eq!(y_hat[1], 1);
     }
 
     #[test]
