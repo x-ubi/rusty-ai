@@ -55,8 +55,11 @@ impl GaussianNB {
         let mut max_class = 0;
 
         for class in self.class_freq.keys() {
-            let mean = self.class_mean.get(class).unwrap();
-            let variance = self.class_variance.get(class).unwrap();
+            let mean = self.class_mean.get(class).expect("Class mean not found.");
+            let variance = self
+                .class_variance
+                .get(class)
+                .expect("Class variance not found.");
             let variance_epsilon = DVector::<f64>::from_element(variance.len(), 1e-9);
 
             let log_likelihood = -0.5
