@@ -1,6 +1,7 @@
 // Decision Tree
 use std::fmt::Debug;
 use std::cmp::PartialEq;
+use nalgebra::{DMatrix, DVector};
 
 pub trait Value: Debug + PartialEq + Clone {}
 impl<T> Value for T where T: Debug + PartialEq + Clone {}
