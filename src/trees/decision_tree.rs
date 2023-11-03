@@ -1,38 +1,22 @@
 // Decision Tree
+use std::fmt::Debug;
+use std::cmp::PartialEq;
 
-use rand;
+pub trait Value: Debug + PartialEq + Clone {}
+impl<T> Value for T where T: Debug + PartialEq + Clone {}
 
-#[derive(Debug)]
-pub struct TreeHyperparameters {
-    dimension: usize,
-    min_sizes_split: usize,
-    max_depth: Option<u16>,
-    rng_seed: Option<u64>
-}
-
-impl TreeHyperparameters {
-    pub fn new(dimension: usize) -> TreeHyperparameters {
-        TreeHyperparameters {
-            dimension: dimension,
-            min_sizes_split: 2,
-            max_depth: Option::None,
-            rng_seed: Option::None
-        }
-    }
-}
-
-pub struct TreeNode<T> {
+pub struct TreeNode<T: Value> {
     criterion: String,
-    left: Option<Box<TreeNode>>,
-    right: Option<Box<TreeNode>>,
+    left: Option<Box<TreeNode<T>>>,
+    right: Option<Box<TreeNode<T>>>,
     information_gain: f64,
     value: T,
 }
 
-impl<T> TreeNode<T> {
-    pub fn new(criterion: Option<String>, value: T) -> TreeNode<T> {
-        TreeNode {
-            criterion: criterion.unwrap_or("gini".to_string())
+impl<T: Value> TreeNode<T> {
+    pub fn new(criterion: Option<String>, value: T) -> Self {
+        Self {
+            criterion: criterion.unwrap_or("gini".to_string()),
             left: Option::None,
             right: Option::None,
             information_gain: 0.0,
@@ -41,10 +25,29 @@ impl<T> TreeNode<T> {
     }
 }
 
-pub struct DecisionTreeClassifier {
-    root: Option<Box<TreeNode>>
+pub struct DecisionTreeClassifier<T: Value> {
+    root: Option<Box<TreeNode<T>>>,
+
+    min_samples_split: u16,
+    max_depth: Option<u16>,
 
 }
+
+impl<T: Value> DecisionTreeClassifier<T> {
+    pub fn new(min_samples_split: Option<u16>, max_depth: Option<u16>) -> Self {
+        Self {
+            root: None,
+            min_samples_split: min_samples_split.unwrap_or(2),
+            max_depth: max_depth
+        }
+    }
+
+    pub fn fit<XType:Value, YType:Value>(X: Vec<XType>, y: Vec<YType>) {
+
+    }
+}
+
+
 
 pub fn main()
 {
