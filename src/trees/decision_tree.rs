@@ -20,3 +20,33 @@ impl TreeHyperparameters {
         }
     }
 }
+
+pub struct TreeNode<T> {
+    criterion: String,
+    left: Option<Box<TreeNode>>,
+    right: Option<Box<TreeNode>>,
+    information_gain: f64,
+    value: T,
+}
+
+impl<T> TreeNode<T> {
+    pub fn new(criterion: Option<String>, value: T) -> TreeNode<T> {
+        TreeNode {
+            criterion: criterion.unwrap_or("gini".to_string())
+            left: Option::None,
+            right: Option::None,
+            information_gain: 0.0,
+            value: value
+        }
+    }
+}
+
+pub struct DecisionTreeClassifier {
+    root: Option<Box<TreeNode>>
+
+}
+
+pub fn main()
+{
+    println!("Hello, world!");
+}
