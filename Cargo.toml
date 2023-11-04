@@ -17,3 +17,4 @@ exclude = [
 [dependencies]
 rand = "0.8.5"
 nalgebra = "0.32.3"
+num-traits = "0.2.17"
