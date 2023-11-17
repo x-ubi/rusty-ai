@@ -4,12 +4,11 @@ use nalgebra::{DMatrix, DVector};
 use std::collections::HashMap;
 use std::marker::PhantomData;
 
-pub struct SplitData<XT: FeatureValue, YT: TargetValue> {
+pub struct SplitDataBase<XT: FeatureValue, YT: TargetValue> {
     pub feature_index: usize,
     pub threshold: XT,
     pub left: Dataset<XT, YT>,
     pub right: Dataset<XT, YT>,
-    pub information_gain: f64,
 }
 
 pub struct TreeNode<XT: FeatureValue, YT: TargetValue> {

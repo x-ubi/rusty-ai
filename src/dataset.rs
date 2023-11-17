@@ -3,8 +3,8 @@ use std::cmp::{Eq, PartialOrd};
 use std::fmt::Debug;
 use std::hash::Hash;
 
-pub trait DataValue: Debug + Clone + 'static {}
-impl<T> DataValue for T where T: Debug + Clone + 'static {}
+pub trait DataValue: Debug + Clone + Copy + 'static {}
+impl<T> DataValue for T where T: Debug + Clone + Copy + 'static {}
 
 pub trait FeatureValue: DataValue + PartialOrd {}
 impl<T> FeatureValue for T where T: DataValue + PartialOrd {}

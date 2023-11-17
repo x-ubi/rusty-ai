@@ -1,9 +1,14 @@
 //! Decision Tree Classifier
-use crate::trees::base::{DecisionTreeBase, TreeNode, SplitData};
 use crate::dataset::{Dataset, FeatureValue, TargetValue};
+use super::base::{DecisionTreeBase, TreeNode, SplitDataBase};
 use nalgebra::{DMatrix,DVector};
 use std::collections::HashSet;
 use std::f64::NEG_INFINITY;
+
+struct SplitData<XT: FeatureValue, YT: TargetValue> {
+    base: SplitDataBase<XT, YT>,
+    information_gain: f64,
+}
 
 pub struct DecisionTreeClassifier<XT: FeatureValue, YT: TargetValue> {
 
@@ -42,8 +47,8 @@ impl<XT: FeatureValue, YT: TargetValue> DecisionTreeClassifier<XT, YT> {
         let (num_samples, num_features) = x.shape();
         if num_samples >= self.base.min_samples_split.into() && current_depth <= self.base.max_depth {
             let best_split = self.get_best_split(&dataset, num_features).unwrap();
-            let left_child = best_split.left;
-            let right_child = best_split.right;
+            let left_child = best_split.base.left;
+            let right_child = best_split.base.right;
             if best_split.information_gain > 0.0 {
                 let new_depth = match current_depth {
                     Some(depth) => Some(depth + 1),
@@ -52,8 +57,8 @@ impl<XT: FeatureValue, YT: TargetValue> DecisionTreeClassifier<XT, YT> {
                 let left_node = self.build_tree(left_child, new_depth);
                 let right_node = self.build_tree(right_child, new_depth);
                 return TreeNode {
-                    feature_index: Some(best_split.feature_index),
-                    threshold: Some(best_split.threshold),
+                    feature_index: Some(best_split.base.feature_index),
+                    threshold: Some(best_split.base.threshold),
                     left: Some(Box::new(left_node)),
                     right: Some(Box::new(right_node)),
                     value: None,
@@ -91,10 +96,12 @@ impl<XT: FeatureValue, YT: TargetValue> DecisionTreeClassifier<XT, YT> {
 
                     if current_information_gain > best_information_gain {
                         best_split = Some(SplitData {
-                            feature_index: feature_index,
-                            threshold: value.clone(),
-                            left: left_child,
-                            right: right_child,
+                            base: SplitDataBase {
+                                feature_index: feature_index,
+                                threshold: value.clone(),
+                                left: left_child,
+                                right: right_child,
+                            },
                             information_gain: current_information_gain,
                         });
                         best_information_gain = current_information_gain;
@@ -107,17 +114,17 @@ impl<XT: FeatureValue, YT: TargetValue> DecisionTreeClassifier<XT, YT> {
 
     fn calculate_information_gain(
         &self,
-        parent_values: DVector<YT>,
-        left_values: DVector<YT>,
-        right_values: DVector<YT>,
+        parent_y: DVector<YT>,
+        left_y: DVector<YT>,
+        right_y: DVector<YT>,
     ) -> f64 {
-        let weight_left = left_values.len() as f64 / parent_values.len() as f64;
-        let weight_right = right_values.len() as f64 / parent_values.len() as f64;
+        let weight_left = left_y.len() as f64 / parent_y.len() as f64;
+        let weight_right = right_y.len() as f64 / parent_y.len() as f64;
 
         if self.criterion == "gini" {
-            return self.gini_index(parent_values)
-                - weight_left * self.gini_index(left_values)
-                - weight_right * self.gini_index(right_values);
+            return self.gini_index(parent_y)
+                - weight_left * self.gini_index(left_y)
+                - weight_right * self.gini_index(right_y);
         }
         0.0
     }
