@@ -1,22 +1,22 @@
 //! Decision Tree Classifier
+use super::base::{DecisionTreeBase, SplitDataBase, TreeNode};
 use crate::dataset::{Dataset, FeatureValue, TargetValue};
-use super::base::{DecisionTreeBase, TreeNode, SplitDataBase};
-use nalgebra::{DMatrix,DVector};
-use std::collections::HashSet;
+use nalgebra::{DMatrix, DVector};
+use std::collections::{HashMap, HashSet};
 use std::f64::NEG_INFINITY;
+use std::hash::Hash;
 
-struct SplitData<XT: FeatureValue, YT: TargetValue> {
+struct SplitData<XT: FeatureValue, YT: TargetValue + Eq + Hash> {
     base: SplitDataBase<XT, YT>,
     information_gain: f64,
 }
 
-pub struct DecisionTreeClassifier<XT: FeatureValue, YT: TargetValue> {
-
+pub struct DecisionTreeClassifier<XT: FeatureValue, YT: TargetValue + Eq + Hash> {
     base: DecisionTreeBase<XT, YT>,
     criterion: String,
 }
 
-impl<XT: FeatureValue, YT: TargetValue> DecisionTreeClassifier<XT, YT> {
+impl<XT: FeatureValue, YT: TargetValue + Eq + Hash> DecisionTreeClassifier<XT, YT> {
     pub fn new(
         criterion: Option<String>,
         min_samples_split: Option<u16>,
@@ -34,7 +34,7 @@ impl<XT: FeatureValue, YT: TargetValue> DecisionTreeClassifier<XT, YT> {
         ));
     }
 
-    pub fn predict(&self, features:DMatrix<XT>) -> DVector<YT> {
+    pub fn predict(&self, features: &DMatrix<XT>) -> DVector<YT> {
         self.base.predict(features)
     }
 
@@ -45,7 +45,8 @@ impl<XT: FeatureValue, YT: TargetValue> DecisionTreeClassifier<XT, YT> {
     ) -> TreeNode<XT, YT> {
         let (x, y) = &dataset.into_parts();
         let (num_samples, num_features) = x.shape();
-        if num_samples >= self.base.min_samples_split.into() && current_depth <= self.base.max_depth {
+        if num_samples >= self.base.min_samples_split.into() && current_depth <= self.base.max_depth
+        {
             let best_split = self.get_best_split(&dataset, num_features).unwrap();
             let left_child = best_split.base.left;
             let right_child = best_split.base.right;
@@ -66,8 +67,19 @@ impl<XT: FeatureValue, YT: TargetValue> DecisionTreeClassifier<XT, YT> {
             }
         }
 
-        let leaf_value = self.base.leaf_value(y.clone_owned());
+        let leaf_value = self.leaf_value(y.clone_owned());
         TreeNode::new(leaf_value)
+    }
+
+    fn leaf_value(&self, y: DVector<YT>) -> Option<YT> {
+        let mut class_counts = HashMap::new();
+        for item in y.iter() {
+            *class_counts.entry(item).or_insert(0) += 1;
+        }
+        class_counts
+            .into_iter()
+            .max_by_key(|&(_, count)| count)
+            .map(|(val, _)| val.clone())
     }
 
     fn get_best_split(

@@ -1,16 +1,46 @@
 use nalgebra::{DMatrix, DVector};
-use std::cmp::{Eq, PartialOrd};
+use num_traits::{Bounded, FromPrimitive, Num, ToPrimitive};
+use std::cmp::PartialOrd;
 use std::fmt::Debug;
-use std::hash::Hash;
+use std::ops::{AddAssign, DivAssign, MulAssign, SubAssign};
 
-pub trait DataValue: Debug + Clone + Copy + 'static {}
-impl<T> DataValue for T where T: Debug + Clone + Copy + 'static {}
+pub trait DataValue:
+    Debug
+    + Clone
+    + Copy
+    + Num
+    + FromPrimitive
+    + ToPrimitive
+    + AddAssign
+    + SubAssign
+    + MulAssign
+    + DivAssign
+    + Bounded
+    + 'static
+{
+}
+
+impl<T> DataValue for T where
+    T: Debug
+        + Clone
+        + Copy
+        + Num
+        + FromPrimitive
+        + ToPrimitive
+        + AddAssign
+        + SubAssign
+        + MulAssign
+        + DivAssign
+        + Bounded
+        + 'static
+{
+}
 
 pub trait FeatureValue: DataValue + PartialOrd {}
 impl<T> FeatureValue for T where T: DataValue + PartialOrd {}
 
-pub trait TargetValue: DataValue + Eq + Hash {}
-impl<T> TargetValue for T where T: DataValue + Eq + Hash {}
+pub trait TargetValue: DataValue {}
+impl<T> TargetValue for T where T: DataValue {}
 
 pub struct Dataset<XT: FeatureValue, YT: TargetValue> {
     pub x: DMatrix<XT>,
