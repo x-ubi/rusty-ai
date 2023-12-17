@@ -2,7 +2,6 @@
 use super::base::{DecisionTreeBase, SplitDataBase, TreeNode};
 use crate::dataset::{Dataset, FeatureValue, TargetValue};
 use nalgebra::{DMatrix, DVector};
-use num_traits::ToPrimitive;
 use std::f64::NEG_INFINITY;
 
 pub struct SplitData<XT: FeatureValue, YT: TargetValue> {
@@ -123,7 +122,7 @@ impl<XT: FeatureValue, YT: TargetValue> DecisionTreeRegressor<XT, YT> {
         let variance = y.iter().fold(YT::from_f64(0.0).unwrap(), |acc, x| {
             acc + (*x - mean) * (*x - mean)
         });
-        let variance_f64 = ToPrimitive::to_f64(&variance).unwrap();
+        let variance_f64 = YT::to_f64(&variance).unwrap();
         variance_f64 / y.len() as f64
     }
 
