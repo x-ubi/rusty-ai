@@ -1,31 +1,26 @@
 use nalgebra::{DMatrix, DVector};
+use num_traits::Float;
 use std::collections::{HashMap, HashSet};
 
-/// For now, the implementation is set to work on integer classes and floating point data.
-/// This is because I wanted to have AN implementation ready to go.
-/// It will be genericized further down the line.
-pub struct GaussianNB {
-    class_freq: HashMap<i32, f64>,
-    class_mean: HashMap<i32, DVector<f64>>,
-    class_variance: HashMap<i32, DVector<f64>>,
+use crate::dataset::{Dataset, Number, WholeNumber};
+
+pub struct GaussianNB<XT: Number + Float, YT: WholeNumber> {
+    class_freq: HashMap<YT, XT>,
+    class_mean: HashMap<YT, DVector<XT>>,
+    class_variance: HashMap<YT, DVector<XT>>,
 }
 
-impl Default for GaussianNB {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl GaussianNB {
+impl<XT: Number + Float, YT: WholeNumber> GaussianNB<XT, YT> {
     pub fn new() -> Self {
-        GaussianNB {
+        Self {
             class_freq: HashMap::new(),
             class_mean: HashMap::new(),
             class_variance: HashMap::new(),
         }
     }
 
-    pub fn fit(&mut self, x: &DMatrix<f64>, y: &DVector<i32>) {
+    pub fn fit(&mut self, dataset: &Dataset<XT, YT>) {
+        let (x, y) = dataset.into_parts();
         let classes = y.iter().cloned().collect::<HashSet<_>>();
 
         for class in classes {
@@ -38,11 +33,15 @@ impl GaussianNB {
                 .collect::<Vec<_>>();
             let x_class = x.select_rows(class_indices.as_slice());
 
-            let mean = DVector::from_fn(x_class.ncols(), |col, _| x_class.column(col).mean());
-            let variance =
-                DVector::from_fn(x_class.ncols(), |col, _| x_class.column(col).variance());
+            let mean = DVector::from_fn(x_class.ncols(), |col, _| {
+                self.mean(&x_class.column(col).into_owned())
+            });
+            let variance = DVector::from_fn(x_class.ncols(), |col, _| {
+                self.variance(&x_class.column(col).into_owned())
+            });
 
-            let freq = class_indices.len() as f64 / x.nrows() as f64;
+            let freq =
+                XT::from_usize(class_indices.len()).unwrap() / XT::from_usize(x.nrows()).unwrap();
 
             self.class_freq.insert(class, freq);
             self.class_mean.insert(class, mean);
@@ -50,9 +49,24 @@ impl GaussianNB {
         }
     }
 
-    fn predict_single(&self, x: &DVector<f64>) -> i32 {
-        let mut max_log_likelihood = f64::MIN;
-        let mut max_class = 0;
+    fn mean(&self, x: &DVector<XT>) -> XT {
+        let zero = XT::from_f64(0.0).unwrap();
+        let sum: XT = x.fold(zero, |acc, x| acc + x);
+
+        sum / XT::from_usize(x.len()).unwrap()
+    }
+
+    fn variance(&self, x: &DVector<XT>) -> XT {
+        let mean = self.mean(x);
+        let zero = XT::from_f64(0.0).unwrap();
+        let numerator = x.fold(zero, |acc, x| acc + (x - mean) * (x - mean));
+
+        numerator / XT::from_usize(x.len() - 1).unwrap()
+    }
+
+    fn predict_single(&self, x: &DVector<XT>) -> YT {
+        let mut max_log_likelihood = XT::from_f64(f64::NEG_INFINITY).unwrap();
+        let mut max_class = YT::from_i8(0).unwrap();
 
         for class in self.class_freq.keys() {
             let mean = self.class_mean.get(class).expect("Class mean not found.");
@@ -60,14 +74,16 @@ impl GaussianNB {
                 .class_variance
                 .get(class)
                 .expect("Class variance not found.");
-            let variance_epsilon = DVector::<f64>::from_element(variance.len(), 1e-9);
+            let variance_epsilon =
+                DVector::<XT>::from_element(variance.len(), XT::from_f64(1e-9).unwrap());
 
-            let log_likelihood = -0.5
-                * ((x - mean)
-                    .component_mul(&(x - mean))
-                    .component_div(&(variance.scale(2.0) + &variance_epsilon)))
+            let starting = XT::from_f64(-0.5).unwrap();
+            let log_likelihood = starting
+                * ((x - mean).component_mul(&(x - mean)).component_div(
+                    &(variance.map(|v| v * XT::from_f64(2.0).unwrap()) + &variance_epsilon),
+                ))
                 .sum()
-                - 0.5 * (variance + &variance_epsilon).map(|v| v.ln()).sum()
+                + starting * (variance + &variance_epsilon).map(|v| v.ln()).sum()
                 + self.class_freq.get(class).unwrap().ln();
 
             if log_likelihood > max_log_likelihood {
@@ -78,7 +94,7 @@ impl GaussianNB {
         max_class
     }
 
-    pub fn predict(&self, x: &DMatrix<f64>) -> DVector<i32> {
+    pub fn predict(&self, x: &DMatrix<XT>) -> DVector<YT> {
         let mut y_pred = Vec::new();
 
         for i in 0..x.nrows() {
@@ -98,7 +114,7 @@ mod tests {
 
     #[test]
     fn test_default_initialization() {
-        let clf = GaussianNB::new();
+        let clf = GaussianNB::<f64, i32>::new();
 
         assert!(clf.class_freq.is_empty());
         assert!(clf.class_mean.is_empty());
@@ -107,7 +123,7 @@ mod tests {
 
     #[test]
     fn test_model_fit() {
-        let mut clf = GaussianNB::new();
+        let mut clf = GaussianNB::<f64, i32>::new();
 
         let x = DMatrix::from_row_slice(
             4,
@@ -117,8 +133,9 @@ mod tests {
             ],
         );
         let y = DVector::from_column_slice(&[0, 0, 1, 1]);
+        let dataset = Dataset::new(x, y);
 
-        clf.fit(&x, &y);
+        clf.fit(&dataset);
 
         assert_abs_diff_eq!(*clf.class_freq.get(&0).unwrap(), 0.5, epsilon = 1e-7);
         assert_abs_diff_eq!(*clf.class_freq.get(&1).unwrap(), 0.5, epsilon = 1e-7);
@@ -126,7 +143,7 @@ mod tests {
 
     #[test]
     fn test_predictions() {
-        let mut clf = GaussianNB::new();
+        let mut clf = GaussianNB::<f64, i32>::new();
 
         let x = DMatrix::from_row_slice(
             4,
@@ -136,7 +153,9 @@ mod tests {
             ],
         );
         let y = DVector::from_column_slice(&[0, 0, 1, 1]);
-        clf.fit(&x, &y);
+        let dataset = Dataset::new(x, y);
+
+        clf.fit(&dataset);
 
         let test_x = DMatrix::from_row_slice(2, 3, &[2.0, 3.0, 4.0, 6.0, 7.0, 8.0]);
 
@@ -147,13 +166,14 @@ mod tests {
 
     #[test]
     fn test_empty_data() {
-        let mut clf = GaussianNB::new();
+        let mut clf = GaussianNB::<f64, i32>::new();
         let empty_x = DMatrix::<f64>::zeros(0, 0);
         let empty_y = DVector::<i32>::zeros(0);
         let empty_pred_y = clf.predict(&empty_x);
         assert_eq!(empty_pred_y.len(), 0);
+        let dataset = Dataset::new(empty_x, empty_y);
 
-        clf.fit(&empty_x, &empty_y);
+        clf.fit(&dataset);
         assert_eq!(clf.class_freq.len(), 0);
         assert_eq!(clf.class_mean.len(), 0);
         assert_eq!(clf.class_variance.len(), 0);
@@ -161,11 +181,13 @@ mod tests {
 
     #[test]
     fn test_single_class() {
-        let mut clf = GaussianNB::new();
+        let mut clf = GaussianNB::<f64, i32>::new();
 
         let x = DMatrix::from_row_slice(3, 2, &[1.0, 2.0, 2.0, 3.0, 3.0, 4.0]);
         let y = DVector::from_column_slice(&[0, 0, 0]);
-        clf.fit(&x, &y);
+        let dataset = Dataset::new(x, y);
+
+        clf.fit(&dataset);
 
         assert_eq!(clf.class_freq.len(), 1);
         assert_eq!(clf.class_mean.len(), 1);
@@ -180,16 +202,17 @@ mod tests {
 
     #[test]
     fn test_predict_with_constant_feature() {
-        let mut model = GaussianNB::new();
+        let mut clf = GaussianNB::<f64, i32>::new();
 
         let x = DMatrix::from_row_slice(4, 2, &[0.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0]);
         let y = DVector::from_vec(vec![0, 0, 1, 1]);
 
         let x_new = DMatrix::from_row_slice(2, 2, &[0.0, 1.0, 1.0, 1.0]);
+        let dataset = Dataset::new(x, y);
 
-        model.fit(&x, &y);
+        clf.fit(&dataset);
 
-        let y_hat = model.predict(&x_new);
+        let y_hat = clf.predict(&x_new);
 
         assert_eq!(y_hat.len(), 2);
         assert_eq!(y_hat[0], 0);
@@ -198,7 +221,7 @@ mod tests {
 
     #[test]
     fn test_gaussian_nb() {
-        let mut clf = GaussianNB::new();
+        let mut clf = GaussianNB::<f64, i32>::new();
 
         let x = DMatrix::from_row_slice(
             4,
@@ -208,8 +231,9 @@ mod tests {
             ],
         );
         let y = DVector::from_column_slice(&[0, 0, 1, 1]);
+        let dataset = Dataset::new(x, y);
 
-        clf.fit(&x, &y);
+        clf.fit(&dataset);
 
         assert_abs_diff_eq!(*clf.class_freq.get(&0).unwrap(), 0.5, epsilon = 1e-7);
         assert_abs_diff_eq!(*clf.class_freq.get(&1).unwrap(), 0.5, epsilon = 1e-7);

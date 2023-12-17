@@ -2,6 +2,7 @@ use nalgebra::{DMatrix, DVector};
 use num_traits::{FromPrimitive, Num, ToPrimitive};
 use std::cmp::PartialOrd;
 use std::fmt::Debug;
+use std::hash::Hash;
 use std::ops::{AddAssign, DivAssign, MulAssign, SubAssign};
 
 pub trait DataValue:
@@ -34,18 +35,18 @@ impl<T> DataValue for T where
 {
 }
 
-pub trait FeatureValue: DataValue + PartialOrd {}
-impl<T> FeatureValue for T where T: DataValue + PartialOrd {}
+pub trait Number: DataValue + PartialOrd {}
+impl<T> Number for T where T: DataValue + PartialOrd {}
 
-pub trait TargetValue: DataValue {}
-impl<T> TargetValue for T where T: DataValue {}
+pub trait WholeNumber: Number + Eq + Hash {}
+impl<T> WholeNumber for T where T: Number + Eq + Hash {}
 
-pub struct Dataset<XT: FeatureValue, YT: TargetValue> {
+pub struct Dataset<XT: Number, YT: DataValue> {
     pub x: DMatrix<XT>,
     pub y: DVector<YT>,
 }
 
-impl<XT: FeatureValue, YT: TargetValue> Dataset<XT, YT> {
+impl<XT: Number, YT: DataValue> Dataset<XT, YT> {
     pub fn new(x: DMatrix<XT>, y: DVector<YT>) -> Self {
         Self { x, y }
     }
