@@ -26,7 +26,7 @@ impl<XT: FeatureValue, YT: TargetValue> TreeNode<XT, YT> {
             left: None,
             right: None,
 
-            value: value,
+            value,
         }
     }
 }
@@ -43,14 +43,14 @@ impl<XT: FeatureValue, YT: TargetValue> DecisionTreeBase<XT, YT> {
         Self {
             root: None,
             min_samples_split: min_samples_split.unwrap_or(2),
-            max_depth: max_depth,
+            max_depth,
             _marker: PhantomData,
         }
     }
 
     pub fn make_prediction(&self, features: DVector<XT>, node: &TreeNode<XT, YT>) -> YT {
         if let Some(value) = &node.value {
-            return value.clone();
+            return *value;
         }
         match &features[node.feature_index.unwrap()] {
             x if x <= node.threshold.as_ref().unwrap() => {

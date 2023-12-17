@@ -40,14 +40,11 @@ impl<XT: FeatureValue, YT: TargetValue> DecisionTreeRegressor<XT, YT> {
         let (num_samples, num_features) = x.shape();
         if num_samples >= self.base.min_samples_split.into() && current_depth <= self.base.max_depth
         {
-            let best_split = self.get_best_split(&dataset, num_features).unwrap();
+            let best_split = self.get_best_split(dataset, num_features).unwrap();
             let left_child = best_split.base.left;
             let right_child = best_split.base.right;
             if best_split.information_gain > 0.0 {
-                let new_depth = match current_depth {
-                    Some(depth) => Some(depth + 1),
-                    _ => None,
-                };
+                let new_depth = current_depth.map(|depth| depth + 1);
                 let left_node = self.build_tree(&left_child, new_depth);
                 let right_node = self.build_tree(&right_child, new_depth);
                 return TreeNode {
@@ -60,7 +57,7 @@ impl<XT: FeatureValue, YT: TargetValue> DecisionTreeRegressor<XT, YT> {
             }
         }
 
-        let leaf_value = self.mean(&y);
+        let leaf_value = self.mean(y);
         TreeNode::new(Some(leaf_value))
     }
 
@@ -79,20 +76,20 @@ impl<XT: FeatureValue, YT: TargetValue> DecisionTreeRegressor<XT, YT> {
             unique_values.dedup();
 
             for value in &unique_values {
-                let (left_child, right_child) = dataset.split(feature_index, value.clone());
+                let (left_child, right_child) = dataset.split(feature_index, *value);
 
                 if left_child.is_not_empty() && right_child.is_not_empty() {
                     let current_information_gain = self.calculate_variance_reduction(
-                        dataset.y.clone(),
-                        left_child.y.clone(),
-                        right_child.y.clone(),
+                        &dataset.y,
+                        &left_child.y,
+                        &right_child.y,
                     );
 
                     if current_information_gain > best_information_gain {
                         best_split = Some(SplitData {
                             base: SplitDataBase {
-                                feature_index: feature_index,
-                                threshold: value.clone(),
+                                feature_index,
+                                threshold: *value,
                                 left: left_child,
                                 right: right_child,
                             },
@@ -108,13 +105,13 @@ impl<XT: FeatureValue, YT: TargetValue> DecisionTreeRegressor<XT, YT> {
 
     fn calculate_variance_reduction(
         &self,
-        parent_y: DVector<YT>,
-        left_y: DVector<YT>,
-        right_y: DVector<YT>,
+        parent_y: &DVector<YT>,
+        left_y: &DVector<YT>,
+        right_y: &DVector<YT>,
     ) -> f64 {
-        let variance = self.variance(&parent_y);
-        let left_variance = self.variance(&left_y);
-        let right_variance = self.variance(&right_y);
+        let variance = self.variance(parent_y);
+        let left_variance = self.variance(left_y);
+        let right_variance = self.variance(right_y);
         let num_samples = parent_y.len() as f64;
         variance
             - (left_variance * (left_y.len() as f64) / num_samples)
@@ -164,7 +161,8 @@ mod tests {
         let left_y = DVector::from_vec(vec![1.0, 2.0]);
         let right_y = DVector::from_vec(vec![3.0, 4.0, 5.0]);
         let regressor: DecisionTreeRegressor<f64, f64> = DecisionTreeRegressor::new(None, None);
-        let variance_reduction = regressor.calculate_variance_reduction(parent_y, left_y, right_y);
+        let variance_reduction =
+            regressor.calculate_variance_reduction(&parent_y, &left_y, &right_y);
         assert!(variance_reduction > 0.0);
     }
 

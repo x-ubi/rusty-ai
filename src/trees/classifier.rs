@@ -24,7 +24,7 @@ impl<XT: FeatureValue, YT: TargetValue + Eq + Hash> DecisionTreeClassifier<XT, Y
     ) -> Self {
         Self {
             base: DecisionTreeBase::new(min_samples_split, max_depth),
-            criterion: criterion.unwrap_or("gini".to_string()),
+            criterion: criterion.unwrap_or_else(|| "gini".to_string()),
         }
     }
 
@@ -51,10 +51,7 @@ impl<XT: FeatureValue, YT: TargetValue + Eq + Hash> DecisionTreeClassifier<XT, Y
             let left_child = best_split.base.left;
             let right_child = best_split.base.right;
             if best_split.information_gain > 0.0 {
-                let new_depth = match current_depth {
-                    Some(depth) => Some(depth + 1),
-                    _ => None,
-                };
+                let new_depth = current_depth.map(|depth| depth + 1);
                 let left_node = self.build_tree(left_child, new_depth);
                 let right_node = self.build_tree(right_child, new_depth);
                 return TreeNode {
@@ -79,7 +76,7 @@ impl<XT: FeatureValue, YT: TargetValue + Eq + Hash> DecisionTreeClassifier<XT, Y
         class_counts
             .into_iter()
             .max_by_key(|&(_, count)| count)
-            .map(|(val, _)| val.clone())
+            .map(|(val, _)| *val)
     }
 
     fn get_best_split(
@@ -97,20 +94,17 @@ impl<XT: FeatureValue, YT: TargetValue + Eq + Hash> DecisionTreeClassifier<XT, Y
             unique_values.dedup();
 
             for value in &unique_values {
-                let (left_child, right_child) = dataset.split(feature_index, value.clone());
+                let (left_child, right_child) = dataset.split(feature_index, *value);
 
                 if left_child.is_not_empty() && right_child.is_not_empty() {
-                    let current_information_gain = self.calculate_information_gain(
-                        dataset.y.clone(),
-                        left_child.y.clone(),
-                        right_child.y.clone(),
-                    );
+                    let current_information_gain =
+                        self.calculate_information_gain(&dataset.y, &left_child.y, &right_child.y);
 
                     if current_information_gain > best_information_gain {
                         best_split = Some(SplitData {
                             base: SplitDataBase {
-                                feature_index: feature_index,
-                                threshold: value.clone(),
+                                feature_index,
+                                threshold: *value,
                                 left: left_child,
                                 right: right_child,
                             },
@@ -126,9 +120,9 @@ impl<XT: FeatureValue, YT: TargetValue + Eq + Hash> DecisionTreeClassifier<XT, Y
 
     fn calculate_information_gain(
         &self,
-        parent_y: DVector<YT>,
-        left_y: DVector<YT>,
-        right_y: DVector<YT>,
+        parent_y: &DVector<YT>,
+        left_y: &DVector<YT>,
+        right_y: &DVector<YT>,
     ) -> f64 {
         let weight_left = left_y.len() as f64 / parent_y.len() as f64;
         let weight_right = right_y.len() as f64 / parent_y.len() as f64;
@@ -141,7 +135,7 @@ impl<XT: FeatureValue, YT: TargetValue + Eq + Hash> DecisionTreeClassifier<XT, Y
         0.0
     }
 
-    fn gini_index(&self, y: DVector<YT>) -> f64 {
+    fn gini_index(&self, y: &DVector<YT>) -> f64 {
         let classes: HashSet<_> = y.iter().collect();
         let mut gini_index = 0.0;
         for class in classes.into_iter() {
