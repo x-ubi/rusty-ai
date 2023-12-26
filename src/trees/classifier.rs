@@ -132,7 +132,7 @@ impl<XT: Number, YT: WholeNumber> DecisionTreeClassifier<XT, YT> {
             unique_values.dedup();
 
             for value in &unique_values {
-                let (left_child, right_child) = dataset.split(feature_index, *value);
+                let (left_child, right_child) = dataset.split_on_threshold(feature_index, *value);
 
                 if left_child.is_not_empty() && right_child.is_not_empty() {
                     let current_information_gain =

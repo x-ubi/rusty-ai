@@ -1,6 +1,9 @@
 use nalgebra::{DMatrix, DVector};
 use num_traits::{Float, FromPrimitive, Num, ToPrimitive};
+use rand::seq::SliceRandom;
+use rand::{rngs::StdRng, SeedableRng};
 use std::cmp::PartialOrd;
+use std::error::Error;
 use std::fmt;
 use std::fmt::{Debug, Formatter};
 use std::hash::Hash;
@@ -86,7 +89,50 @@ impl<XT: Number, YT: TargetValue> Dataset<XT, YT> {
         !(self.x.is_empty() || self.y.is_empty())
     }
 
-    pub fn split(&self, feature_index: usize, threshold: XT) -> (Dataset<XT, YT>, Dataset<XT, YT>) {
+    pub fn train_test_split(
+        &self,
+        train_size: f64,
+        seed: Option<u64>,
+    ) -> Result<(Self, Self), Box<dyn Error>> {
+        if train_size < 0.0 || train_size > 1.0 {
+            return Err("Train size should be between 0.0 and 1.0".into());
+        }
+        let mut rng = match seed {
+            Some(seed) => StdRng::seed_from_u64(seed),
+            None => StdRng::from_entropy(),
+        };
+
+        let mut indices = (0..self.x.nrows()).collect::<Vec<_>>();
+        indices.shuffle(&mut rng);
+        let train_size = (self.x.nrows() as f64 * train_size).floor() as usize;
+        let train_indices = &indices[..train_size];
+        let test_indices = &indices[train_size..];
+
+        let train_x = train_indices
+            .iter()
+            .map(|&index| self.x.row(index))
+            .collect::<Vec<_>>();
+        let train_y = train_indices
+            .iter()
+            .map(|&index| self.y[index])
+            .collect::<Vec<_>>();
+
+        let test_x = test_indices
+            .iter()
+            .map(|&index| self.x.row(index))
+            .collect::<Vec<_>>();
+        let test_y = test_indices
+            .iter()
+            .map(|&index| self.y[index])
+            .collect::<Vec<_>>();
+
+        let train_dataset = Self::new(DMatrix::from_rows(&train_x), DVector::from_vec(train_y));
+        let test_dataset = Self::new(DMatrix::from_rows(&test_x), DVector::from_vec(test_y));
+
+        Ok((train_dataset, test_dataset))
+    }
+
+    pub fn split_on_threshold(&self, feature_index: usize, threshold: XT) -> (Self, Self) {
         let (left_indices, right_indices): (Vec<_>, Vec<_>) = self
             .x
             .row_iter()
@@ -112,15 +158,15 @@ impl<XT: Number, YT: TargetValue> Dataset<XT, YT> {
             .collect();
 
         let left_dataset = if left_x.is_empty() {
-            Dataset::new(DMatrix::zeros(0, self.x.ncols()), DVector::zeros(0))
+            Self::new(DMatrix::zeros(0, self.x.ncols()), DVector::zeros(0))
         } else {
-            Dataset::new(DMatrix::from_rows(&left_x), DVector::from_rows(&left_y))
+            Self::new(DMatrix::from_rows(&left_x), DVector::from_rows(&left_y))
         };
 
         let right_dataset = if right_x.is_empty() {
-            Dataset::new(DMatrix::zeros(0, self.x.ncols()), DVector::zeros(0))
+            Self::new(DMatrix::zeros(0, self.x.ncols()), DVector::zeros(0))
         } else {
-            Dataset::new(DMatrix::from_rows(&right_x), DVector::from_rows(&right_y))
+            Self::new(DMatrix::from_rows(&right_x), DVector::from_rows(&right_y))
         };
 
         (left_dataset, right_dataset)
