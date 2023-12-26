@@ -55,10 +55,21 @@ pub struct Dataset<XT: Number, YT: TargetValue> {
 
 impl<XT: Number, YT: TargetValue> Debug for Dataset<XT, YT> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Dataset")
-            .field("x", &self.x)
-            .field("y", &self.y)
-            .finish()
+        write!(f, "Dataset {{\n    x: [\n")?;
+
+        for i in 0..self.x.nrows() {
+            write!(f, "        [")?;
+            for j in 0..self.x.ncols() {
+                write!(f, "{:?}, ", self.x[(i, j)])?;
+            }
+            writeln!(f, "]")?;
+        }
+
+        write!(f, "    ],\n    y: [")?;
+        for i in 0..self.y.len() {
+            write!(f, "{:?}, ", self.y[i])?;
+        }
+        write!(f, "]\n}}")
     }
 }
 
@@ -84,7 +95,7 @@ impl<XT: Number, YT: TargetValue> Dataset<XT, YT> {
 
         let left_x: Vec<_> = left_indices
             .iter()
-            .map(|&(index, _)| self.x.row(index).clone_owned())
+            .map(|&(index, _)| self.x.row(index))
             .collect();
         let left_y: Vec<_> = left_indices
             .iter()
@@ -100,9 +111,18 @@ impl<XT: Number, YT: TargetValue> Dataset<XT, YT> {
             .map(|&(index, _)| self.y.row(index))
             .collect();
 
-        (
-            Dataset::new(DMatrix::from_rows(&left_x), DVector::from_rows(&left_y)),
-            Dataset::new(DMatrix::from_rows(&right_x), DVector::from_rows(&right_y)),
-        )
+        let left_dataset = if left_x.is_empty() {
+            Dataset::new(DMatrix::zeros(0, self.x.ncols()), DVector::zeros(0))
+        } else {
+            Dataset::new(DMatrix::from_rows(&left_x), DVector::from_rows(&left_y))
+        };
+
+        let right_dataset = if right_x.is_empty() {
+            Dataset::new(DMatrix::zeros(0, self.x.ncols()), DVector::zeros(0))
+        } else {
+            Dataset::new(DMatrix::from_rows(&right_x), DVector::from_rows(&right_y))
+        };
+
+        (left_dataset, right_dataset)
     }
 }
