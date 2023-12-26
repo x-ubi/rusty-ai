@@ -201,21 +201,21 @@ mod tests {
     #[test]
     fn test_gini_impurity_homogeneous() {
         let classifier = DecisionTreeClassifier::<f64, u32>::new();
-        let y = DVector::from_vec(vec![1, 1, 1, 1]); // Homogeneous set
+        let y = DVector::from_vec(vec![1, 1, 1, 1]);
         assert_eq!(classifier.gini_impurity(&y), 0.0);
     }
 
     #[test]
     fn test_gini_impurity_mixed() {
         let classifier = DecisionTreeClassifier::<f64, u32>::new();
-        let y = DVector::from_vec(vec![1, 0, 1, 0]); // Evenly split set
+        let y = DVector::from_vec(vec![1, 0, 1, 0]);
         assert!((classifier.gini_impurity(&y) - 0.5).abs() < f64::EPSILON);
     }
 
     #[test]
     fn test_gini_impurity_multiple_classes() {
         let classifier = DecisionTreeClassifier::<f64, u32>::new();
-        let y = DVector::from_vec(vec![1, 2, 1, 2, 3]); // Three classes
+        let y = DVector::from_vec(vec![1, 2, 1, 2, 3]);
         let expected_impurity =
             1.0 - (2.0 / 5.0) * (2.0 / 5.0) - (2.0 / 5.0) * (2.0 / 5.0) - (1.0 / 5.0) * (1.0 / 5.0);
         assert!((classifier.gini_impurity(&y) - expected_impurity).abs() < f64::EPSILON);

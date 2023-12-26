@@ -21,7 +21,16 @@ pub struct DecisionTreeRegressor<XT: Number, YT: TargetValue> {
 }
 
 impl<XT: Number, YT: TargetValue> DecisionTreeRegressor<XT, YT> {
-    pub fn new(min_samples_split: Option<u16>, max_depth: Option<u16>) -> Self {
+    pub fn new() -> Self {
+        Self {
+            root: None,
+            min_samples_split: 2,
+            max_depth: None,
+            _marker: PhantomData,
+        }
+    }
+
+    pub fn with_params(min_samples_split: Option<u16>, max_depth: Option<u16>) -> Self {
         Self {
             root: None,
             min_samples_split: min_samples_split.unwrap_or(2),
@@ -165,7 +174,7 @@ mod tests {
     #[test]
     fn test_mean() {
         let y = DVector::from_vec(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
-        let regressor: DecisionTreeRegressor<f64, f64> = DecisionTreeRegressor::new(None, None);
+        let regressor: DecisionTreeRegressor<f64, f64> = DecisionTreeRegressor::new();
         let mean = regressor.mean(&y);
         assert_eq!(mean, 3.5);
     }
@@ -173,7 +182,7 @@ mod tests {
     #[test]
     fn test_variance() {
         let y = DVector::from_vec(vec![1.0, 2.0, 3.0, 4.0, 5.0]);
-        let regressor: DecisionTreeRegressor<f64, f64> = DecisionTreeRegressor::new(None, None);
+        let regressor: DecisionTreeRegressor<f64, f64> = DecisionTreeRegressor::new();
         let variance = regressor.variance(&y);
         assert_eq!(variance, 2.0);
     }
@@ -183,7 +192,7 @@ mod tests {
         let parent_y = DVector::from_vec(vec![1.0, 2.0, 3.0, 4.0, 5.0]);
         let left_y = DVector::from_vec(vec![1.0, 2.0]);
         let right_y = DVector::from_vec(vec![3.0, 4.0, 5.0]);
-        let regressor: DecisionTreeRegressor<f64, f64> = DecisionTreeRegressor::new(None, None);
+        let regressor: DecisionTreeRegressor<f64, f64> = DecisionTreeRegressor::new();
         let variance_reduction =
             regressor.calculate_variance_reduction(&parent_y, &left_y, &right_y);
         assert!(variance_reduction > 0.0);
@@ -194,7 +203,7 @@ mod tests {
         let x = DMatrix::from_vec(6, 1, vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
         let y = DVector::from_vec(vec![1.0, 4.0, 9.0, 16.0, 25.0, 36.0]);
         let dataset = Dataset::new(x, y);
-        let mut regressor: DecisionTreeRegressor<f64, f64> = DecisionTreeRegressor::new(None, None);
+        let mut regressor: DecisionTreeRegressor<f64, f64> = DecisionTreeRegressor::new();
         regressor.fit(&dataset);
 
         let test_x = DMatrix::from_vec(3, 1, vec![2.0, 3.0, 4.0]);
@@ -209,7 +218,7 @@ mod tests {
         let x = DMatrix::from_vec(3, 2, vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
         let y = DVector::from_vec(vec![1.0, 4.0, 9.0]);
         let dataset = Dataset::new(x, y);
-        let mut regressor: DecisionTreeRegressor<f64, f64> = DecisionTreeRegressor::new(None, None);
+        let mut regressor: DecisionTreeRegressor<f64, f64> = DecisionTreeRegressor::new();
         regressor.fit(&dataset);
 
         let test_x = DMatrix::from_vec(3, 2, vec![2.0, 3.0, 4.0, 5.0, 6.0]);
@@ -224,7 +233,7 @@ mod tests {
         let x = DMatrix::from_vec(1, 2, vec![1.0, 2.0]);
         let y = DVector::from_vec(vec![1.0]);
         let dataset = Dataset::new(x, y);
-        let mut regressor: DecisionTreeRegressor<f64, f64> = DecisionTreeRegressor::new(None, None);
+        let mut regressor: DecisionTreeRegressor<f64, f64> = DecisionTreeRegressor::new();
         regressor.fit(&dataset);
 
         let test_x = DMatrix::from_vec(1, 2, vec![2.0, 3.0]);
