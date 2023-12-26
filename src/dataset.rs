@@ -1,7 +1,8 @@
 use nalgebra::{DMatrix, DVector};
 use num_traits::{FromPrimitive, Num, ToPrimitive};
 use std::cmp::PartialOrd;
-use std::fmt::Debug;
+use std::fmt;
+use std::fmt::{Debug, Formatter};
 use std::ops::{AddAssign, DivAssign, MulAssign, SubAssign};
 
 pub trait DataValue:
@@ -43,6 +44,15 @@ impl<T> TargetValue for T where T: DataValue {}
 pub struct Dataset<XT: FeatureValue, YT: TargetValue> {
     pub x: DMatrix<XT>,
     pub y: DVector<YT>,
+}
+
+impl<XT: FeatureValue, YT: TargetValue> Debug for Dataset<XT, YT> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Dataset")
+            .field("x", &self.x)
+            .field("y", &self.y)
+            .finish()
+    }
 }
 
 impl<XT: FeatureValue, YT: TargetValue> Dataset<XT, YT> {
