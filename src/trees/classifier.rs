@@ -1,13 +1,12 @@
 //! Decision Tree Classifier
 use super::base::TreeNode;
-use crate::dataset::{Dataset, FeatureValue, TargetValue};
+use crate::dataset::{Dataset, Number, WholeNumber};
 use nalgebra::{DMatrix, DVector};
 use std::collections::{HashMap, HashSet};
 use std::f64;
-use std::hash::Hash;
 use std::marker::PhantomData;
 
-struct SplitData<XT: FeatureValue, YT: TargetValue + Eq + Hash> {
+struct SplitData<XT: Number, YT: WholeNumber> {
     pub feature_index: usize,
     pub threshold: XT,
     pub left: Dataset<XT, YT>,
@@ -15,7 +14,7 @@ struct SplitData<XT: FeatureValue, YT: TargetValue + Eq + Hash> {
     information_gain: f64,
 }
 
-pub struct DecisionTreeClassifier<XT: FeatureValue, YT: TargetValue + Eq + Hash> {
+pub struct DecisionTreeClassifier<XT: Number, YT: WholeNumber> {
     pub root: Option<Box<TreeNode<XT, YT>>>,
     pub min_samples_split: u16,
     pub max_depth: Option<u16>,
@@ -24,7 +23,7 @@ pub struct DecisionTreeClassifier<XT: FeatureValue, YT: TargetValue + Eq + Hash>
     _marker: PhantomData<XT>,
 }
 
-impl<XT: FeatureValue, YT: TargetValue + Eq + Hash> DecisionTreeClassifier<XT, YT> {
+impl<XT: Number, YT: WholeNumber> DecisionTreeClassifier<XT, YT> {
     pub fn new() -> Self {
         Self {
             root: None,

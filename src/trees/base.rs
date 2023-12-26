@@ -1,7 +1,7 @@
 // Base Decision Tree
-use crate::dataset::{FeatureValue, TargetValue};
+use crate::dataset::{Number, TargetValue};
 
-pub struct TreeNode<XT: FeatureValue, YT: TargetValue> {
+pub struct TreeNode<XT: Number, YT: TargetValue> {
     pub feature_index: Option<usize>,
     pub threshold: Option<XT>,
     pub left: Option<Box<TreeNode<XT, YT>>>,
@@ -9,7 +9,7 @@ pub struct TreeNode<XT: FeatureValue, YT: TargetValue> {
     pub value: Option<YT>,
 }
 
-impl<XT: FeatureValue, YT: TargetValue> TreeNode<XT, YT> {
+impl<XT: Number, YT: TargetValue> TreeNode<XT, YT> {
     pub fn new(value: Option<YT>) -> Self {
         Self {
             feature_index: None,

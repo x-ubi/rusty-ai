@@ -1,8 +1,9 @@
 use nalgebra::{DMatrix, DVector};
-use num_traits::{FromPrimitive, Num, ToPrimitive};
+use num_traits::{Float, FromPrimitive, Num, ToPrimitive};
 use std::cmp::PartialOrd;
 use std::fmt;
 use std::fmt::{Debug, Formatter};
+use std::hash::Hash;
 use std::ops::{AddAssign, DivAssign, MulAssign, SubAssign};
 
 pub trait DataValue:
@@ -35,18 +36,24 @@ impl<T> DataValue for T where
 {
 }
 
-pub trait FeatureValue: DataValue + PartialOrd {}
-impl<T> FeatureValue for T where T: DataValue + PartialOrd {}
+pub trait Number: DataValue + PartialOrd {}
+impl<T> Number for T where T: DataValue + PartialOrd {}
+
+pub trait WholeNumber: Number + Eq + Hash {}
+impl<T> WholeNumber for T where T: Number + Eq + Hash {}
+
+pub trait RealNumber: Number + Float {}
+impl<T> RealNumber for T where T: Number + Float {}
 
 pub trait TargetValue: DataValue {}
 impl<T> TargetValue for T where T: DataValue {}
 
-pub struct Dataset<XT: FeatureValue, YT: TargetValue> {
+pub struct Dataset<XT: Number, YT: TargetValue> {
     pub x: DMatrix<XT>,
     pub y: DVector<YT>,
 }
 
-impl<XT: FeatureValue, YT: TargetValue> Debug for Dataset<XT, YT> {
+impl<XT: Number, YT: TargetValue> Debug for Dataset<XT, YT> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.debug_struct("Dataset")
             .field("x", &self.x)
@@ -55,7 +62,7 @@ impl<XT: FeatureValue, YT: TargetValue> Debug for Dataset<XT, YT> {
     }
 }
 
-impl<XT: FeatureValue, YT: TargetValue> Dataset<XT, YT> {
+impl<XT: Number, YT: TargetValue> Dataset<XT, YT> {
     pub fn new(x: DMatrix<XT>, y: DVector<YT>) -> Self {
         Self { x, y }
     }

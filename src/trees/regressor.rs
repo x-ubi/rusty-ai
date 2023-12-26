@@ -1,10 +1,10 @@
 //! Decision Tree Regressor
 use super::base::TreeNode;
-use crate::dataset::{Dataset, FeatureValue, TargetValue};
+use crate::dataset::{Dataset, Number, TargetValue};
 use nalgebra::{DMatrix, DVector};
 use std::{f64, marker::PhantomData};
 
-pub struct SplitData<XT: FeatureValue, YT: TargetValue> {
+pub struct SplitData<XT: Number, YT: TargetValue> {
     pub feature_index: usize,
     pub threshold: XT,
     pub left: Dataset<XT, YT>,
@@ -12,7 +12,7 @@ pub struct SplitData<XT: FeatureValue, YT: TargetValue> {
     information_gain: f64,
 }
 
-pub struct DecisionTreeRegressor<XT: FeatureValue, YT: TargetValue> {
+pub struct DecisionTreeRegressor<XT: Number, YT: TargetValue> {
     pub root: Option<Box<TreeNode<XT, YT>>>,
     pub min_samples_split: u16,
     pub max_depth: Option<u16>,
@@ -20,7 +20,7 @@ pub struct DecisionTreeRegressor<XT: FeatureValue, YT: TargetValue> {
     _marker: PhantomData<XT>,
 }
 
-impl<XT: FeatureValue, YT: TargetValue> DecisionTreeRegressor<XT, YT> {
+impl<XT: Number, YT: TargetValue> DecisionTreeRegressor<XT, YT> {
     pub fn new(min_samples_split: Option<u16>, max_depth: Option<u16>) -> Self {
         Self {
             root: None,
