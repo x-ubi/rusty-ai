@@ -19,3 +19,8 @@ csv = "1.3.0"
 rand = "0.8.5"
 nalgebra = "0.32.3"
 num-traits = "0.2.17"
+
+
+[[bin]]
+name = "test-algos"
+path = "src/bin/testing.rs"
