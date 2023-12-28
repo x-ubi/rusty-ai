@@ -1,3 +1,5 @@
+use std::error::Error;
+
 use crate::dataset::{Dataset, RealNumber};
 use nalgebra::{DMatrix, DVector};
 
@@ -24,8 +26,25 @@ impl<T: RealNumber> LogisticRegression<T> {
         }
     }
 
-    pub fn fit(&mut self, dataset: Dataset<T, T>, lr: T, mut max_steps: usize, epsilon: Option<T>) {
+    pub fn predict(&self, features: &DMatrix<T>) -> DVector<T> {
+        self.h(features)
+    }
+
+    pub fn fit(
+        &mut self,
+        dataset: Dataset<T, T>,
+        lr: T,
+        mut max_steps: usize,
+        epsilon: Option<T>,
+        progress: Option<usize>,
+    ) -> Result<String, Box<dyn Error>> {
+        if progress.is_some_and(|steps| steps == 0) {
+            return Err(
+                "The number of steps for progress visualization must be greater than 0.".into(),
+            );
+        }
         let (x, y) = dataset.into_parts();
+        let finished_message = String::from("Finished training.");
         while max_steps > 0 {
             let weights_prev = self.weights.clone();
             let grad = self.gradient(x, y);
@@ -36,6 +55,11 @@ impl<T: RealNumber> LogisticRegression<T> {
                     .zip(grad.iter())
                     .map(|(&w, &g)| w - lr * g),
             );
+            if progress.is_some_and(|steps| max_steps % steps == 0) {
+                println!("Weights: {:?}", self.weights);
+                println!("Cross entropy: {:?}", self.cross_entropy(x, y));
+            }
+
             if self
                 .weights
                 .iter()
@@ -44,10 +68,15 @@ impl<T: RealNumber> LogisticRegression<T> {
                 .fold(T::from_f64(0.0).unwrap(), |acc, x| acc + x)
                 < epsilon.unwrap_or_else(|| T::from_f64(1e-6).unwrap())
             {
-                return;
+                return Ok(finished_message);
             }
             max_steps -= 1;
         }
+        Ok(finished_message)
+    }
+
+    pub fn weights(&self) -> &DVector<T> {
+        &self.weights
     }
 
     fn gradient(&self, x: &DMatrix<T>, y: &DVector<T>) -> DVector<T> {
@@ -63,7 +92,7 @@ impl<T: RealNumber> LogisticRegression<T> {
             .fold(DVector::zeros(self.weights.len()), |acc, v| acc + v)
     }
 
-    fn cross_entropy(&self, x: &DMatrix<T>, y: &DVector<T>) -> T {
+    pub fn cross_entropy(&self, x: &DMatrix<T>, y: &DVector<T>) -> T {
         let y_pred: DVector<T> = self.h(x);
         let one = T::from_f64(1.0).unwrap();
 
