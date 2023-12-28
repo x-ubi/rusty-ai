@@ -1,5 +1,5 @@
 //! Decision Tree Regressor
-use super::base::TreeNode;
+use super::node::TreeNode;
 use crate::dataset::{Dataset, Number, TargetValue};
 use nalgebra::{DMatrix, DVector};
 use std::{f64, marker::PhantomData};

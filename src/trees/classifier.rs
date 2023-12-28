@@ -1,5 +1,5 @@
 //! Decision Tree Classifier
-use super::base::TreeNode;
+use super::node::TreeNode;
 use crate::dataset::{Dataset, Number, WholeNumber};
 use nalgebra::{DMatrix, DVector};
 use std::collections::{HashMap, HashSet};

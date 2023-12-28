@@ -1,3 +1,3 @@
 pub mod dataset;
-pub mod logistic;
+pub mod regression;
 pub mod trees;
