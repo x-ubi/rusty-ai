@@ -50,7 +50,7 @@ impl<XT: Number, YT: WholeNumber> DecisionTreeClassifier<XT, YT> {
         }
     }
 
-    pub fn fit(&mut self, dataset: Dataset<XT, YT>) {
+    pub fn fit(&mut self, dataset: &Dataset<XT, YT>) {
         self.root = Some(Box::new(
             self.build_tree(dataset, self.max_depth.map(|_| 0)),
         ));
@@ -79,7 +79,7 @@ impl<XT: Number, YT: WholeNumber> DecisionTreeClassifier<XT, YT> {
 
     fn build_tree(
         &mut self,
-        dataset: Dataset<XT, YT>,
+        dataset: &Dataset<XT, YT>,
         current_depth: Option<u16>,
     ) -> TreeNode<XT, YT> {
         let (x, y) = &dataset.into_parts();
@@ -90,8 +90,8 @@ impl<XT: Number, YT: WholeNumber> DecisionTreeClassifier<XT, YT> {
             let right_child = best_split.right;
             if best_split.information_gain > 0.0 {
                 let new_depth = current_depth.map(|depth| depth + 1);
-                let left_node = self.build_tree(left_child, new_depth);
-                let right_node = self.build_tree(right_child, new_depth);
+                let left_node = self.build_tree(&left_child, new_depth);
+                let right_node = self.build_tree(&right_child, new_depth);
                 return TreeNode {
                     feature_index: Some(best_split.feature_index),
                     threshold: Some(best_split.threshold),
@@ -259,7 +259,7 @@ mod tests {
         let y = DVector::from_vec(vec![0, 0, 1, 1]); // Target values
         let dataset = Dataset::new(x, y);
 
-        classifier.fit(dataset);
+        classifier.fit(&dataset);
 
         // Check if the root of the tree is correctly set
         assert!(classifier.root.is_some());
