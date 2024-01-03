@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use crate::dataset::{Dataset, Number, WholeNumber};
 use crate::trees::classifier::DecisionTreeClassifier;
 use nalgebra::{DMatrix, DVector};
+use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
 use rayon::prelude::*;
 
 pub struct RandomForestClassifier<XT: Number + Send + Sync, YT: WholeNumber + Send + Sync> {
@@ -34,10 +36,19 @@ impl<XT: Number + Send + Sync, YT: WholeNumber + Send + Sync> RandomForestClassi
         }
     }
     pub fn fit(&mut self, dataset: Dataset<XT, YT>, seed: Option<u64>) {
+        let mut rng = match seed {
+            Some(seed) => StdRng::seed_from_u64(seed),
+            _ => StdRng::from_entropy(),
+        };
+        let seeds = (0..self.num_trees)
+            .map(|_| rng.gen::<u64>())
+            .collect::<Vec<_>>();
+
         self.trees = (0..self.num_trees)
             .into_par_iter()
-            .map(|_| {
-                let subset = dataset.samples(self.sample_size, seed);
+            .map(|x| {
+                let tree_seed = seeds[x];
+                let subset = dataset.samples(self.sample_size, Some(tree_seed));
                 let mut tree = DecisionTreeClassifier::with_params(
                     Some(self.criterion.clone()),
                     Some(self.min_samples_split),
