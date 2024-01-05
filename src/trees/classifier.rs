@@ -22,6 +22,12 @@ pub struct DecisionTreeClassifier<XT: Number, YT: WholeNumber> {
     _marker: PhantomData<XT>,
 }
 
+impl<XT: Number, YT: WholeNumber> Default for DecisionTreeClassifier<XT, YT> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<XT: Number, YT: WholeNumber> DecisionTreeClassifier<XT, YT> {
     pub fn new() -> Self {
         Self {
@@ -62,21 +68,21 @@ impl<XT: Number, YT: WholeNumber> DecisionTreeClassifier<XT, YT> {
     pub fn predict(&self, features: &DMatrix<XT>) -> DVector<YT> {
         let predictions: Vec<_> = features
             .row_iter()
-            .map(|row| self.make_prediction(row.transpose(), self.root.as_ref().unwrap()))
+            .map(|row| Self::make_prediction(row.transpose(), self.root.as_ref().unwrap()))
             .collect();
 
         DVector::from_vec(predictions)
     }
 
-    fn make_prediction(&self, features: DVector<XT>, node: &TreeNode<XT, YT>) -> YT {
+    fn make_prediction(features: DVector<XT>, node: &TreeNode<XT, YT>) -> YT {
         if let Some(value) = &node.value {
             return *value;
         }
         match &features[node.feature_index.unwrap()] {
             x if x <= node.threshold.as_ref().unwrap() => {
-                return self.make_prediction(features, node.left.as_ref().unwrap())
+                return Self::make_prediction(features, node.left.as_ref().unwrap())
             }
-            _ => return self.make_prediction(features, node.right.as_ref().unwrap()),
+            _ => return Self::make_prediction(features, node.right.as_ref().unwrap()),
         }
     }
 
@@ -88,7 +94,7 @@ impl<XT: Number, YT: WholeNumber> DecisionTreeClassifier<XT, YT> {
         let (x, y) = &dataset.into_parts();
         let (num_samples, num_features) = x.shape();
         if num_samples >= self.min_samples_split.into() && current_depth <= self.max_depth {
-            let best_split = self.get_best_split(&dataset, num_features).unwrap();
+            let best_split = self.get_best_split(dataset, num_features).unwrap();
             let left_child = best_split.left;
             let right_child = best_split.right;
             if best_split.information_gain > 0.0 {

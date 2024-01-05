@@ -95,7 +95,7 @@ impl<XT: Number, YT: TargetValue> Dataset<XT, YT> {
         train_size: f64,
         seed: Option<u64>,
     ) -> Result<(Self, Self), Box<dyn Error>> {
-        if train_size < 0.0 || train_size > 1.0 {
+        if !(0.0..=1.0).contains(&train_size) {
             return Err("Train size should be between 0.0 and 1.0".into());
         }
         let mut rng = match seed {

@@ -20,6 +20,12 @@ pub struct DecisionTreeRegressor<XT: Number, YT: TargetValue> {
     _marker: PhantomData<XT>,
 }
 
+impl<XT: Number, YT: TargetValue> Default for DecisionTreeRegressor<XT, YT> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<XT: Number, YT: TargetValue> DecisionTreeRegressor<XT, YT> {
     pub fn new() -> Self {
         Self {
@@ -48,21 +54,21 @@ impl<XT: Number, YT: TargetValue> DecisionTreeRegressor<XT, YT> {
     pub fn predict(&self, prediction_features: &DMatrix<XT>) -> DVector<YT> {
         let predictions: Vec<_> = prediction_features
             .row_iter()
-            .map(|row| self.make_prediction(row.transpose(), self.root.as_ref().unwrap()))
+            .map(|row| Self::make_prediction(row.transpose(), self.root.as_ref().unwrap()))
             .collect();
 
         DVector::from_vec(predictions)
     }
 
-    fn make_prediction(&self, features: DVector<XT>, node: &TreeNode<XT, YT>) -> YT {
+    fn make_prediction(features: DVector<XT>, node: &TreeNode<XT, YT>) -> YT {
         if let Some(value) = &node.value {
             return *value;
         }
         match &features[node.feature_index.unwrap()] {
             x if x <= node.threshold.as_ref().unwrap() => {
-                return self.make_prediction(features, node.left.as_ref().unwrap())
+                return Self::make_prediction(features, node.left.as_ref().unwrap())
             }
-            _ => return self.make_prediction(features, node.right.as_ref().unwrap()),
+            _ => return Self::make_prediction(features, node.right.as_ref().unwrap()),
         }
     }
 

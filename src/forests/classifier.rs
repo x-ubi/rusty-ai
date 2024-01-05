@@ -14,6 +14,14 @@ pub struct RandomForestClassifier<XT: Number + Send + Sync, YT: WholeNumber + Se
     sample_size: usize,
 }
 
+impl<XT: Number + Send + Sync, YT: WholeNumber + Send + Sync> Default
+    for RandomForestClassifier<XT, YT>
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<XT: Number + Send + Sync, YT: WholeNumber + Send + Sync> RandomForestClassifier<XT, YT> {
     pub fn new() -> Self {
         Self {
@@ -50,7 +58,7 @@ impl<XT: Number + Send + Sync, YT: WholeNumber + Send + Sync> RandomForestClassi
                 let prediction = tree.predict(&DMatrix::from_row_slice(
                     1,
                     features.ncols(),
-                    &features.row(i).transpose().as_slice(),
+                    features.row(i).transpose().as_slice(),
                 ));
                 *class_counts.entry(prediction[0]).or_insert(0) += 1;
             }
