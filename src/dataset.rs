@@ -1,7 +1,7 @@
 use nalgebra::{DMatrix, DVector};
 use num_traits::{Float, FromPrimitive, Num, ToPrimitive};
-use rand::Rng;
 use rand::seq::SliceRandom;
+use rand::Rng;
 use rand::{rngs::StdRng, SeedableRng};
 use std::cmp::PartialOrd;
 use std::error::Error;
@@ -173,7 +173,7 @@ impl<XT: Number, YT: TargetValue> Dataset<XT, YT> {
         (left_dataset, right_dataset)
     }
 
-    pub fn sample_with_replacement(&self, sample_size: usize, seed: Option<u64>) -> Self {
+    pub fn samples(&self, sample_size: usize, seed: Option<u64>) -> Self {
         let mut rng = match seed {
             Some(seed) => StdRng::seed_from_u64(seed),
             None => StdRng::from_entropy(),
@@ -195,5 +195,4 @@ impl<XT: Number, YT: TargetValue> Dataset<XT, YT> {
 
         Self::new(DMatrix::from_rows(&sample_x), DVector::from_vec(sample_y))
     }
-
 }

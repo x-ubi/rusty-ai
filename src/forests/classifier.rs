@@ -29,7 +29,7 @@ impl<XT: Number + Send + Sync, YT: WholeNumber + Send + Sync> RandomForestClassi
         self.trees = (0..self.num_trees)
             .into_par_iter()
             .map(|_| {
-                let subset = dataset.sample_with_replacement(self.sample_size, seed);
+                let subset = dataset.samples(self.sample_size, seed);
                 let mut tree = DecisionTreeClassifier::with_params(
                     Some(self.criterion.clone()),
                     Some(self.min_samples_split),
