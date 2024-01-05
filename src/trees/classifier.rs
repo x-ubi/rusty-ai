@@ -1,4 +1,3 @@
-//! Decision Tree Classifier
 use super::node::TreeNode;
 use crate::dataset::{Dataset, Number, WholeNumber};
 use nalgebra::{DMatrix, DVector};
@@ -13,7 +12,7 @@ struct SplitData<XT: Number, YT: WholeNumber> {
     pub right: Dataset<XT, YT>,
     information_gain: f64,
 }
-
+/// Decision Tree Classifier
 pub struct DecisionTreeClassifier<XT: Number, YT: WholeNumber> {
     pub root: Option<Box<TreeNode<XT, YT>>>,
     pub min_samples_split: u16,
@@ -50,14 +49,18 @@ impl<XT: Number, YT: WholeNumber> DecisionTreeClassifier<XT, YT> {
         }
     }
 
+    /// Build the tree from a dataset.
+    /// * `dataset` - dataset containing features and labels
     pub fn fit(&mut self, dataset: &Dataset<XT, YT>) {
         self.root = Some(Box::new(
             self.build_tree(dataset, self.max_depth.map(|_| 0)),
         ));
     }
 
-    pub fn predict(&self, prediction_features: &DMatrix<XT>) -> DVector<YT> {
-        let predictions: Vec<_> = prediction_features
+    /// Predict the labels for new data.
+    /// * `features` - _MxN_ matrix for _M_
+    pub fn predict(&self, features: &DMatrix<XT>) -> DVector<YT> {
+        let predictions: Vec<_> = features
             .row_iter()
             .map(|row| self.make_prediction(row.transpose(), self.root.as_ref().unwrap()))
             .collect();

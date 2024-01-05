@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::dataset::{Dataset, Number, WholeNumber};
 use crate::trees::classifier::DecisionTreeClassifier;
-use nalgebra::{ComplexField, DMatrix, DVector};
+use nalgebra::{DMatrix, DVector};
 use rayon::prelude::*;
 
 pub struct RandomForestClassifier<XT: Number + Send + Sync, YT: WholeNumber + Send + Sync> {
