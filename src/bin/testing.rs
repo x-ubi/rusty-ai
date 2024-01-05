@@ -1,5 +1,6 @@
 use csv::ReaderBuilder;
 use nalgebra::{DMatrix, DVector};
+use rusty_ai::bayes::gaussian::GaussianNB;
 use rusty_ai::dataset::Dataset;
 use rusty_ai::regression::logistic::LogisticRegression;
 use rusty_ai::trees::classifier::DecisionTreeClassifier;
@@ -67,8 +68,25 @@ fn test_logistic_regression(
     let mut classifier = LogisticRegression::new(Some(30), None)?;
     println!(
         "{}",
-        classifier.fit(train_dataset, 0.00001, 1000, Some(1e-8), Some(50))?
+        classifier.fit(train_dataset, 0.001, 10000, Some(1e-6), Some(10))?
     );
+    let predictions = classifier.predict(&test_dataset.x);
+    let mut correct = 0;
+    for (prediction, actual) in predictions.iter().zip(test_dataset.y.iter()) {
+        if prediction == actual {
+            correct += 1;
+        }
+    }
+    let accuracy = (correct as f64 / test_dataset.y.len() as f64) * 100.0;
+    Ok(format!("Accuracy: {}%", accuracy))
+}
+
+fn test_naive_bayes_gaussian(
+    train_dataset: &Dataset<f64, u8>,
+    test_dataset: &Dataset<f64, u8>,
+) -> Result<String, Box<dyn Error>> {
+    let mut classifier = GaussianNB::new();
+    classifier.fit(&train_dataset);
     let predictions = classifier.predict(&test_dataset.x);
     let mut correct = 0;
     for (prediction, actual) in predictions.iter().zip(test_dataset.y.iter()) {
@@ -84,13 +102,14 @@ fn main() {
     let mut dataset = match read_file_classification("datasets/cancer_clean.csv", 30, true) {
         Ok(dataset) => {
             println!("Loaded dataset");
+            println!("{:?}", dataset);
             dataset
         }
         Err(err) => panic!("{}", err),
     };
     dataset.standardize();
 
-    let (train_dataset, test_dataset) = match dataset.train_test_split(0.75, Some(100000)) {
+    let (train_dataset, test_dataset) = match dataset.train_test_split(0.75, None) {
         Ok(datasets) => datasets,
         Err(err) => panic!("{}", err),
     };
