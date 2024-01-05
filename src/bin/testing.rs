@@ -1,6 +1,7 @@
 use csv::ReaderBuilder;
 use nalgebra::{DMatrix, DVector};
 use rusty_ai::dataset::Dataset;
+use rusty_ai::forests::classifier::RandomForestClassifier;
 use rusty_ai::regression::logistic::LogisticRegression;
 use rusty_ai::trees::classifier::DecisionTreeClassifier;
 use std::collections::HashMap;
@@ -44,10 +45,13 @@ fn read_file_classification(
     Ok(Dataset::new(feature_matrix, label_vector))
 }
 
-fn test_tree_classifier(train_dataset: &Dataset<f64, u8>, test_dataset: &Dataset<f64, u8>) {
+fn test_tree_classifier(
+    train_dataset: &Dataset<f64, u8>,
+    test_dataset: &Dataset<f64, u8>,
+) -> Result<(), String> {
     let mut classifier = DecisionTreeClassifier::with_params(None, None, Some(3));
-    classifier.fit(&train_dataset);
-    let predictions = classifier.predict(&test_dataset.x);
+    classifier.fit(&train_dataset)?;
+    let predictions = classifier.predict(&test_dataset.x)?;
     let mut correct = 0;
     for (prediction, actual) in predictions.iter().zip(test_dataset.y.iter()) {
         if prediction == actual {
@@ -58,6 +62,27 @@ fn test_tree_classifier(train_dataset: &Dataset<f64, u8>, test_dataset: &Dataset
         "Accuracy: {}%",
         (correct as f64 / test_dataset.y.len() as f64) * 100.0
     );
+    Ok(())
+}
+
+fn test_random_forest_classifier(
+    train_dataset: &Dataset<f64, u8>,
+    test_dataset: &Dataset<f64, u8>,
+) -> Result<(), String> {
+    let mut classifier = RandomForestClassifier::new();
+    classifier.fit(train_dataset, None)?;
+    let predictions = classifier.predict(&test_dataset.x)?;
+    let mut correct = 0;
+    for (prediction, actual) in predictions.iter().zip(test_dataset.y.iter()) {
+        if prediction == actual {
+            correct += 1;
+        }
+    }
+    println!(
+        "Accuracy: {}%",
+        (correct as f64 / test_dataset.y.len() as f64) * 100.0
+    );
+    Ok(())
 }
 
 fn test_logistic_regression(
@@ -90,12 +115,9 @@ fn main() {
     };
     dataset.standardize();
 
-    let (train_dataset, test_dataset) = match dataset.train_test_split(0.75, Some(100000)) {
+    let (train_dataset, test_dataset) = match dataset.train_test_split(0.75, None) {
         Ok(datasets) => datasets,
         Err(err) => panic!("{}", err),
     };
-    println!(
-        "{:?}",
-        test_logistic_regression(&train_dataset, &test_dataset)
-    );
+    println!("{:?}", test_tree_classifier(&train_dataset, &test_dataset));
 }
