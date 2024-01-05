@@ -93,7 +93,7 @@ impl<XT: Number, YT: TargetValue> Dataset<XT, YT> {
     where
         XT: RealNumber,
     {
-        let (nrows, ncols) = self.x.shape();
+        let (nrows, _) = self.x.shape();
 
         let means = self
             .x
