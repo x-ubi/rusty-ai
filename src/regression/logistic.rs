@@ -53,10 +53,12 @@ impl<XT: RealNumber, YT: WholeNumber> LogisticRegression<XT, YT> {
             );
         }
         let (x, y) = dataset.into_parts();
-        let finished_message = String::from("Finished training.");
+        let epsilon = epsilon.unwrap_or_else(|| XT::from_f64(1e-6).unwrap());
+        let initial_max_steps = max_steps.clone();
         while max_steps > 0 {
             let weights_prev = self.weights.clone();
             let grad = self.gradient(x, y);
+
             self.weights = DVector::from_iterator(
                 self.weights.len(),
                 weights_prev
@@ -75,13 +77,16 @@ impl<XT: RealNumber, YT: WholeNumber> LogisticRegression<XT, YT> {
                 .zip(weights_prev.iter())
                 .map(|(&w, &w_prev)| (w - w_prev) * (w - w_prev))
                 .fold(XT::from_f64(0.0).unwrap(), |acc, x| acc + x)
-                < epsilon.unwrap_or_else(|| XT::from_f64(1e-6).unwrap())
+                < epsilon
             {
-                return Ok(finished_message);
+                return Ok(format!(
+                    "Finished training in {} steps.",
+                    initial_max_steps - max_steps,
+                ));
             }
             max_steps -= 1;
         }
-        Ok(finished_message)
+        Ok("Reached maximum steps without converging.".into())
     }
 
     pub fn weights(&self) -> &DVector<XT> {
@@ -92,20 +97,14 @@ impl<XT: RealNumber, YT: WholeNumber> LogisticRegression<XT, YT> {
         let y_pred = self.h(x);
 
         let x_with_bias = x.clone().insert_column(0, XT::from_f64(1.0).unwrap());
+        let y_xt_vec: Vec<XT> = y.iter().map(|&y_i| XT::from(y_i).unwrap()).collect();
 
-        x_with_bias
-            .column_iter()
-            .zip(y.iter())
-            .zip(y_pred.iter())
-            .map(|((x_i, &y_i), &y_pred_i)| {
-                let y_i_xt = XT::from(y_i).unwrap();
-                let mut gradient = DVector::zeros(self.weights.len());
-                for j in 0..gradient.len() {
-                    gradient[j] = x_i[j] * (y_i_xt - y_pred_i);
-                }
-                gradient
-            })
-            .fold(DVector::zeros(self.weights.len()), |acc, v| acc + v)
+        let y_xt = DVector::from_vec(y_xt_vec);
+        let errors = y_pred - y_xt;
+
+        let gradient = x_with_bias.transpose() * errors;
+
+        gradient
     }
 
     pub fn cross_entropy(&self, x: &DMatrix<XT>, y: &DVector<YT>) -> XT {
@@ -133,8 +132,13 @@ impl<XT: RealNumber, YT: WholeNumber> LogisticRegression<XT, YT> {
 
     fn sigmoid(z: XT) -> XT {
         let one = XT::from_f64(1.0).unwrap();
-
-        one / (one + (-z).exp())
+        if z < XT::from_f64(-10.0).unwrap() {
+            XT::from_f64(0.0).unwrap()
+        } else if z > XT::from_f64(10.0).unwrap() {
+            one
+        } else {
+            one / (one + (-z).exp())
+        }
     }
 }
 
