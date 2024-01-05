@@ -89,6 +89,39 @@ impl<XT: Number, YT: TargetValue> Dataset<XT, YT> {
         !(self.x.is_empty() || self.y.is_empty())
     }
 
+    pub fn standardize(&mut self)
+    where
+        XT: RealNumber,
+    {
+        let (nrows, ncols) = self.x.shape();
+
+        let means = self
+            .x
+            .column_iter()
+            .map(|col| col.sum() / XT::from_usize(col.len()).unwrap())
+            .collect::<Vec<_>>();
+        let std_devs = self
+            .x
+            .column_iter()
+            .zip(means.iter())
+            .map(|(col, mean)| {
+                let mut sum = XT::from_f64(0.0).unwrap();
+                for val in col.iter() {
+                    sum += (*val - *mean) * (*val - *mean);
+                }
+                (sum / XT::from_usize(nrows).unwrap()).sqrt()
+            })
+            .collect::<Vec<_>>();
+        let standardized_cols = self
+            .x
+            .column_iter()
+            .zip(means.iter())
+            .zip(std_devs.iter())
+            .map(|((col, &mean), &std_dev)| col.map(|val| (val - mean) / std_dev))
+            .collect::<Vec<_>>();
+        self.x = DMatrix::from_columns(&standardized_cols);
+    }
+
     pub fn train_test_split(
         &self,
         train_size: f64,
