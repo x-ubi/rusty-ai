@@ -45,6 +45,7 @@ fn read_file_classification(
     Ok(Dataset::new(feature_matrix, label_vector))
 }
 
+#[allow(dead_code)]
 fn test_tree_classifier(train_dataset: &Dataset<f64, u8>, test_dataset: &Dataset<f64, u8>) {
     let mut classifier = DecisionTreeClassifier::with_params(None, None, Some(3));
     classifier.fit(&train_dataset);
@@ -61,6 +62,7 @@ fn test_tree_classifier(train_dataset: &Dataset<f64, u8>, test_dataset: &Dataset
     );
 }
 
+#[allow(dead_code)]
 fn test_logistic_regression(
     train_dataset: &Dataset<f64, u8>,
     test_dataset: &Dataset<f64, u8>,
@@ -81,6 +83,7 @@ fn test_logistic_regression(
     Ok(format!("Accuracy: {}%", accuracy))
 }
 
+#[allow(dead_code)]
 fn test_naive_bayes_gaussian(
     train_dataset: &Dataset<f64, u8>,
     test_dataset: &Dataset<f64, u8>,
