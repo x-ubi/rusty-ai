@@ -1,11 +1,11 @@
-use std::collections::HashMap;
-
 use crate::dataset::{Dataset, Number, WholeNumber};
 use crate::trees::classifier::DecisionTreeClassifier;
 use nalgebra::{DMatrix, DVector};
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use rayon::prelude::*;
+use std::collections::HashMap;
+use std::error;
 
 pub struct RandomForestClassifier<XT: Number + Send + Sync, YT: WholeNumber + Send + Sync> {
     trees: Vec<DecisionTreeClassifier<XT, YT>>,
@@ -35,7 +35,8 @@ impl<XT: Number + Send + Sync, YT: WholeNumber + Send + Sync> RandomForestClassi
             criterion: "gini".to_string(),
         }
     }
-    pub fn fit(&mut self, dataset: Dataset<XT, YT>, seed: Option<u64>) {
+
+    pub fn fit(&mut self, dataset: &Dataset<XT, YT>, seed: Option<u64>) -> Result<(), String> {
         let mut rng = match seed {
             Some(seed) => StdRng::seed_from_u64(seed),
             _ => StdRng::from_entropy(),
@@ -44,7 +45,8 @@ impl<XT: Number + Send + Sync, YT: WholeNumber + Send + Sync> RandomForestClassi
             .map(|_| rng.gen::<u64>())
             .collect::<Vec<_>>();
 
-        self.trees = (0..self.num_trees)
+        self.sample_size = dataset.x.nrows() / 2;
+        let trees: Result<Vec<_>, String> = (0..self.num_trees)
             .into_par_iter()
             .map(|x| {
                 let tree_seed = seeds[x];
@@ -54,13 +56,15 @@ impl<XT: Number + Send + Sync, YT: WholeNumber + Send + Sync> RandomForestClassi
                     Some(self.min_samples_split),
                     self.max_depth,
                 );
-                tree.fit(&subset);
-                tree
+                tree.fit(&subset).map_err(|error| error.to_string())?;
+                Ok(tree)
             })
-            .collect::<Vec<_>>();
+            .collect();
+        self.trees = trees?;
+        Ok(())
     }
 
-    pub fn predict(&self, features: &DMatrix<XT>) -> DVector<YT> {
+    pub fn predict(&self, features: &DMatrix<XT>) -> Result<DVector<YT>, String> {
         let mut predictions = DVector::from_element(features.nrows(), YT::from_u8(0).unwrap());
 
         for i in 0..features.nrows() {
@@ -70,7 +74,7 @@ impl<XT: Number + Send + Sync, YT: WholeNumber + Send + Sync> RandomForestClassi
                     1,
                     features.ncols(),
                     features.row(i).transpose().as_slice(),
-                ));
+                ))?;
                 *class_counts.entry(prediction[0]).or_insert(0) += 1;
             }
 
@@ -78,9 +82,11 @@ impl<XT: Number + Send + Sync, YT: WholeNumber + Send + Sync> RandomForestClassi
                 .into_iter()
                 .max_by_key(|&(_, count)| count)
                 .map(|(class, _)| class)
-                .unwrap();
+                .ok_or(
+                    "Prediction failure. No trees built or class counts are empty.".to_string(),
+                )?;
             predictions[i] = chosen_class;
         }
-        predictions
+        Ok(predictions)
     }
 }

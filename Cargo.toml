@@ -24,3 +24,8 @@ rand = "0.8.5"
 rayon = "1.8.0"
 nalgebra = "0.32.3"
 num-traits = "0.2.17"
+
+
+[[bin]]
+name = "test-algos"
+path = "src/bin/testing.rs"

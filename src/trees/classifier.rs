@@ -57,21 +57,26 @@ impl<XT: Number, YT: WholeNumber> DecisionTreeClassifier<XT, YT> {
 
     /// Build the tree from a dataset.
     /// * `dataset` - dataset containing features and labels
-    pub fn fit(&mut self, dataset: &Dataset<XT, YT>) {
+    pub fn fit(&mut self, dataset: &Dataset<XT, YT>) -> Result<(), String> {
         self.root = Some(Box::new(
-            self.build_tree(dataset, self.max_depth.map(|_| 0)),
+            self.build_tree(dataset, self.max_depth.map(|_| 0))?,
         ));
+        Ok(())
     }
 
     /// Predict the labels for new data.
     /// * `features` - _MxN_ matrix for _M_
-    pub fn predict(&self, features: &DMatrix<XT>) -> DVector<YT> {
+    pub fn predict(&self, features: &DMatrix<XT>) -> Result<DVector<YT>, String> {
+        if self.root.is_none() {
+            return Err("Tree wasn't built yet.".to_string());
+        }
+
         let predictions: Vec<_> = features
             .row_iter()
             .map(|row| Self::make_prediction(row.transpose(), self.root.as_ref().unwrap()))
             .collect();
 
-        DVector::from_vec(predictions)
+        Ok(DVector::from_vec(predictions))
     }
 
     fn make_prediction(features: DVector<XT>, node: &TreeNode<XT, YT>) -> YT {
@@ -90,29 +95,29 @@ impl<XT: Number, YT: WholeNumber> DecisionTreeClassifier<XT, YT> {
         &mut self,
         dataset: &Dataset<XT, YT>,
         current_depth: Option<u16>,
-    ) -> TreeNode<XT, YT> {
+    ) -> Result<TreeNode<XT, YT>, String> {
         let (x, y) = &dataset.into_parts();
         let (num_samples, num_features) = x.shape();
         if num_samples >= self.min_samples_split.into() && current_depth <= self.max_depth {
-            let best_split = self.get_best_split(dataset, num_features).unwrap();
+            let best_split = self.get_best_split(dataset, num_features)?;
             let left_child = best_split.left;
             let right_child = best_split.right;
             if best_split.information_gain > 0.0 {
                 let new_depth = current_depth.map(|depth| depth + 1);
-                let left_node = self.build_tree(&left_child, new_depth);
-                let right_node = self.build_tree(&right_child, new_depth);
-                return TreeNode {
+                let left_node = self.build_tree(&left_child, new_depth)?;
+                let right_node = self.build_tree(&right_child, new_depth)?;
+                return Ok(TreeNode {
                     feature_index: Some(best_split.feature_index),
                     threshold: Some(best_split.threshold),
                     left: Some(Box::new(left_node)),
                     right: Some(Box::new(right_node)),
                     value: None,
-                };
+                });
             }
         }
 
         let leaf_value = self.leaf_value(y.clone_owned());
-        TreeNode::new(leaf_value)
+        Ok(TreeNode::new(leaf_value))
     }
 
     fn leaf_value(&self, y: DVector<YT>) -> Option<YT> {
@@ -130,7 +135,7 @@ impl<XT: Number, YT: WholeNumber> DecisionTreeClassifier<XT, YT> {
         &self,
         dataset: &Dataset<XT, YT>,
         num_features: usize,
-    ) -> Option<SplitData<XT, YT>> {
+    ) -> Result<SplitData<XT, YT>, String> {
         let mut best_split: Option<SplitData<XT, YT>> = None;
         let mut best_information_gain = f64::NEG_INFINITY;
 
@@ -160,7 +165,7 @@ impl<XT: Number, YT: WholeNumber> DecisionTreeClassifier<XT, YT> {
                 }
             }
         }
-        best_split
+        best_split.ok_or("No best split found".to_string())
     }
 
     fn calculate_information_gain(
