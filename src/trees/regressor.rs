@@ -12,6 +12,7 @@ pub struct SplitData<XT: Number, YT: TargetValue> {
     information_gain: f64,
 }
 
+/// Decision Tree Regressor
 pub struct DecisionTreeRegressor<XT: Number, YT: TargetValue> {
     pub root: Option<Box<TreeNode<XT, YT>>>,
     pub min_samples_split: u16,
