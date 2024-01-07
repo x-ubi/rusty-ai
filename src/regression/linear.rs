@@ -21,7 +21,7 @@ impl<T: RealNumber> LinearRegression<T> {
             }
             _ => Ok(Self {
                 weights: weights.unwrap_or_else(|| {
-                    DVector::<T>::from_element(dimension.unwrap() + 1, T::from_f64(0.0).unwrap())
+                    DVector::<T>::from_element(dimension.unwrap() + 1, T::from_f64(1.0).unwrap())
                 }),
             }),
         }
@@ -60,7 +60,17 @@ impl<T: RealNumber> LinearRegression<T> {
 
             let gradient = self.gradient(&x_with_bias, y);
 
+            if gradient.iter().any(|&g| g.is_nan()) {
+                return Err("Gradient turned to NaN during training.".into());
+            }
+
             self.weights -= gradient * lr;
+
+            if progress.is_some_and(|steps| max_steps % steps == 0) {
+                println!("Step: {}", initial_max_steps - max_steps);
+                println!("Weights: {:?}", self.weights);
+                println!("MSE: {:?}", self.mse_training(&x_with_bias, y));
+            }
 
             let delta = self
                 .weights
@@ -90,5 +100,22 @@ impl<T: RealNumber> LinearRegression<T> {
 
     fn h(&self, x: &DMatrix<T>) -> DVector<T> {
         x * &self.weights
+    }
+
+    pub fn mse_training(&self, x: &DMatrix<T>, y: &DVector<T>) -> T {
+        let m = T::from_usize(y.len()).unwrap();
+        let y_pred = self.h(x);
+        let errors = y_pred - y;
+        let errors_sq = errors.component_mul(&errors);
+
+        errors_sq.sum() / (T::from_f64(2.0).unwrap() * m)
+    }
+
+    pub fn mse(&self, y_true: &DVector<T>, y_pred: &DVector<T>) -> T {
+        let m = T::from_usize(y_true.len()).unwrap();
+        let errors = y_pred - y_true;
+        let errors_sq = errors.component_mul(&errors);
+
+        errors_sq.sum() / (T::from_f64(2.0).unwrap() * m)
     }
 }

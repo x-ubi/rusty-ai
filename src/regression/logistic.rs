@@ -30,7 +30,9 @@ impl<XT: RealNumber, YT: WholeNumber> LogisticRegression<XT, YT> {
     }
 
     pub fn predict(&self, x_pred: &DMatrix<XT>) -> DVector<YT> {
-        self.h(x_pred).map(|val| {
+        let x_pred_with_bias = x_pred.clone().insert_column(0, XT::from_f64(0.0).unwrap());
+
+        self.h(&x_pred_with_bias).map(|val| {
             if val > XT::from_f64(0.5).unwrap() {
                 YT::from_usize(1).unwrap()
             } else {
@@ -53,6 +55,7 @@ impl<XT: RealNumber, YT: WholeNumber> LogisticRegression<XT, YT> {
             );
         }
         let (x, y) = dataset.into_parts();
+
         let epsilon = epsilon.unwrap_or_else(|| XT::from_f64(1e-6).unwrap());
         let initial_max_steps = max_steps.clone();
         let x_with_bias = x.clone().insert_column(0, XT::from_f64(1.0).unwrap());
@@ -64,8 +67,9 @@ impl<XT: RealNumber, YT: WholeNumber> LogisticRegression<XT, YT> {
             self.weights -= gradient * lr;
 
             if progress.is_some_and(|steps| max_steps % steps == 0) {
+                println!("Step: {:?}", initial_max_steps - max_steps);
                 println!("Weights: {:?}", self.weights);
-                println!("Cross entropy: {:?}", self.cross_entropy(x, y));
+                println!("Cross entropy: {:?}", self.cross_entropy(&x_with_bias, y));
             }
 
             let delta = self
@@ -93,7 +97,6 @@ impl<XT: RealNumber, YT: WholeNumber> LogisticRegression<XT, YT> {
     fn gradient(&self, x: &DMatrix<XT>, y: &DVector<YT>) -> DVector<XT> {
         let y_pred = self.h(x);
 
-        // let x_with_bias = x.clone().insert_column(0, XT::from_f64(1.0).unwrap());
         let y_xt_vec = y
             .iter()
             .map(|&y_i| XT::from(y_i).unwrap())
@@ -120,11 +123,8 @@ impl<XT: RealNumber, YT: WholeNumber> LogisticRegression<XT, YT> {
             / XT::from_usize(y.len()).unwrap()
     }
 
-    fn h(&self, features: &DMatrix<XT>) -> DVector<XT> {
-        // let features_with_bias = features
-        //     .clone()
-        //     .insert_column(0, XT::from_f64(1.0).unwrap());
-        let z = features * &self.weights;
+    fn h(&self, x: &DMatrix<XT>) -> DVector<XT> {
+        let z = x * &self.weights;
         z.map(|val| Self::sigmoid(val))
     }
 
