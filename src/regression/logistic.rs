@@ -29,8 +29,8 @@ impl<XT: RealNumber, YT: WholeNumber> LogisticRegression<XT, YT> {
         }
     }
 
-    pub fn predict(&self, features: &DMatrix<XT>) -> DVector<YT> {
-        self.h(features).map(|val| {
+    pub fn predict(&self, x_pred: &DMatrix<XT>) -> DVector<YT> {
+        self.h(x_pred).map(|val| {
             if val > XT::from_f64(0.5).unwrap() {
                 YT::from_usize(1).unwrap()
             } else {
@@ -55,30 +55,27 @@ impl<XT: RealNumber, YT: WholeNumber> LogisticRegression<XT, YT> {
         let (x, y) = dataset.into_parts();
         let epsilon = epsilon.unwrap_or_else(|| XT::from_f64(1e-6).unwrap());
         let initial_max_steps = max_steps.clone();
+        let x_with_bias = x.clone().insert_column(0, XT::from_f64(1.0).unwrap());
         while max_steps > 0 {
             let weights_prev = self.weights.clone();
-            let grad = self.gradient(x, y);
 
-            self.weights = DVector::from_iterator(
-                self.weights.len(),
-                weights_prev
-                    .iter()
-                    .zip(grad.iter())
-                    .map(|(&w, &g)| w - lr * g),
-            );
+            let gradient = self.gradient(&x_with_bias, y);
+
+            self.weights -= gradient * lr;
+
             if progress.is_some_and(|steps| max_steps % steps == 0) {
                 println!("Weights: {:?}", self.weights);
                 println!("Cross entropy: {:?}", self.cross_entropy(x, y));
             }
 
-            if self
+            let delta = self
                 .weights
                 .iter()
                 .zip(weights_prev.iter())
                 .map(|(&w, &w_prev)| (w - w_prev) * (w - w_prev))
-                .fold(XT::from_f64(0.0).unwrap(), |acc, x| acc + x)
-                < epsilon
-            {
+                .fold(XT::from_f64(0.0).unwrap(), |acc, x| acc + x);
+
+            if delta < epsilon {
                 return Ok(format!(
                     "Finished training in {} steps.",
                     initial_max_steps - max_steps,
@@ -96,15 +93,16 @@ impl<XT: RealNumber, YT: WholeNumber> LogisticRegression<XT, YT> {
     fn gradient(&self, x: &DMatrix<XT>, y: &DVector<YT>) -> DVector<XT> {
         let y_pred = self.h(x);
 
-        let x_with_bias = x.clone().insert_column(0, XT::from_f64(1.0).unwrap());
-        let y_xt_vec: Vec<XT> = y.iter().map(|&y_i| XT::from(y_i).unwrap()).collect();
+        // let x_with_bias = x.clone().insert_column(0, XT::from_f64(1.0).unwrap());
+        let y_xt_vec = y
+            .iter()
+            .map(|&y_i| XT::from(y_i).unwrap())
+            .collect::<Vec<_>>();
 
         let y_xt = DVector::from_vec(y_xt_vec);
         let errors = y_pred - y_xt;
 
-        let gradient = x_with_bias.transpose() * errors;
-
-        gradient
+        x.transpose() * errors
     }
 
     pub fn cross_entropy(&self, x: &DMatrix<XT>, y: &DVector<YT>) -> XT {
@@ -123,10 +121,10 @@ impl<XT: RealNumber, YT: WholeNumber> LogisticRegression<XT, YT> {
     }
 
     fn h(&self, features: &DMatrix<XT>) -> DVector<XT> {
-        let features_with_bias = features
-            .clone()
-            .insert_column(0, XT::from_f64(1.0).unwrap());
-        let z = &features_with_bias * &self.weights;
+        // let features_with_bias = features
+        //     .clone()
+        //     .insert_column(0, XT::from_f64(1.0).unwrap());
+        let z = features * &self.weights;
         z.map(|val| Self::sigmoid(val))
     }
 
@@ -209,9 +207,9 @@ mod tests {
             1.0 / (1.0 + f64::exp(0.5)), // Sigmoid(0.5*1 - 0.5*2 + 0.0*bias)
             1.0 / (1.0 + f64::exp(0.5)), // Sigmoid(0.5*3 - 0.5*4 + 0.0*bias)
         ]);
-
+        let features_with_bias = features.clone().insert_column(0, 1.0);
         // Compute predictions using the 'h' function
-        let predictions = model.h(&features);
+        let predictions = model.h(&features_with_bias);
 
         // Check if the computed predictions are close to the expected values
         for (predicted, expected) in predictions.iter().zip(expected_sigmoid_values.iter()) {
@@ -227,7 +225,8 @@ mod tests {
                 .unwrap();
 
         let features = DMatrix::from_row_slice(2, 2, &[1.0, 2.0, 3.0, 4.0]);
-        let predictions = model.predict(&features);
+        let features_with_bias = features.clone().insert_column(0, 1.0);
+        let predictions = model.predict(&features_with_bias);
 
         assert_eq!(predictions.len(), 2);
         assert!(predictions.iter().all(|&p| p == 0 || p == 1));
