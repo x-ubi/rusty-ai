@@ -5,7 +5,6 @@ use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use rayon::prelude::*;
 use std::collections::HashMap;
-use std::error;
 
 pub struct RandomForestClassifier<XT: Number + Send + Sync, YT: WholeNumber + Send + Sync> {
     trees: Vec<DecisionTreeClassifier<XT, YT>>,
@@ -30,7 +29,7 @@ impl<XT: Number + Send + Sync, YT: WholeNumber + Send + Sync> RandomForestClassi
             trees: Vec::with_capacity(3),
             num_trees: 3,
             min_samples_split: 2,
-            max_depth: None,
+            max_depth: Some(0),
             sample_size: 1000,
             criterion: "gini".to_string(),
         }
@@ -41,15 +40,15 @@ impl<XT: Number + Send + Sync, YT: WholeNumber + Send + Sync> RandomForestClassi
             Some(seed) => StdRng::seed_from_u64(seed),
             _ => StdRng::from_entropy(),
         };
+
         let seeds = (0..self.num_trees)
             .map(|_| rng.gen::<u64>())
             .collect::<Vec<_>>();
 
         self.sample_size = dataset.x.nrows() / 2;
-        let trees: Result<Vec<_>, String> = (0..self.num_trees)
+        let trees: Result<Vec<_>, String> = seeds
             .into_par_iter()
-            .map(|x| {
-                let tree_seed = seeds[x];
+            .map(|tree_seed| {
                 let subset = dataset.samples(self.sample_size, Some(tree_seed));
                 let mut tree = DecisionTreeClassifier::with_params(
                     Some(self.criterion.clone()),

@@ -147,7 +147,7 @@ impl<XT: Number, YT: WholeNumber> DecisionTreeClassifier<XT, YT> {
 
             for value in &unique_values {
                 let (left_child, right_child) = dataset.split_on_threshold(feature_index, *value);
-
+                println!("Threshold: {:?}", *value);
                 if left_child.is_not_empty() && right_child.is_not_empty() {
                     let current_information_gain =
                         self.calculate_information_gain(&dataset.y, &left_child.y, &right_child.y);
@@ -165,7 +165,7 @@ impl<XT: Number, YT: WholeNumber> DecisionTreeClassifier<XT, YT> {
                 }
             }
         }
-        best_split.ok_or("No best split found".to_string())
+        best_split.ok_or(format!("No best split found. ",))
     }
 
     fn calculate_information_gain(
@@ -273,7 +273,7 @@ mod tests {
         let y = DVector::from_vec(vec![0, 0, 1, 1]); // Target values
         let dataset = Dataset::new(x, y);
 
-        classifier.fit(&dataset);
+        let _ = classifier.fit(&dataset);
 
         // Check if the root of the tree is correctly set
         assert!(classifier.root.is_some());
