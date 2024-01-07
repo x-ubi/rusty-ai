@@ -93,7 +93,6 @@ impl<XT: RealNumber, YT: WholeNumber> LogisticRegression<XT, YT> {
     fn gradient(&self, x: &DMatrix<XT>, y: &DVector<YT>) -> DVector<XT> {
         let y_pred = self.h(x);
 
-        // let x_with_bias = x.clone().insert_column(0, XT::from_f64(1.0).unwrap());
         let y_xt_vec = y
             .iter()
             .map(|&y_i| XT::from(y_i).unwrap())
@@ -121,9 +120,6 @@ impl<XT: RealNumber, YT: WholeNumber> LogisticRegression<XT, YT> {
     }
 
     fn h(&self, features: &DMatrix<XT>) -> DVector<XT> {
-        // let features_with_bias = features
-        //     .clone()
-        //     .insert_column(0, XT::from_f64(1.0).unwrap());
         let z = features * &self.weights;
         z.map(|val| Self::sigmoid(val))
     }
