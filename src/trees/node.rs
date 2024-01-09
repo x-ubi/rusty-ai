@@ -1,6 +1,6 @@
-// Base Decision Tree
 use crate::dataset::{Number, TargetValue};
 
+/// Decision tree node
 pub struct TreeNode<XT: Number, YT: TargetValue> {
     pub feature_index: Option<usize>,
     pub threshold: Option<XT>,

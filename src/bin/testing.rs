@@ -2,9 +2,12 @@ use csv::ReaderBuilder;
 use nalgebra::{DMatrix, DVector};
 use rusty_ai::bayes::gaussian::GaussianNB;
 use rusty_ai::dataset::Dataset;
+use rusty_ai::forests::classifier::RandomForestClassifier;
+use rusty_ai::forests::regressor::RandomForestRegressor;
 use rusty_ai::regression::linear::LinearRegression;
 use rusty_ai::regression::logistic::LogisticRegression;
 use rusty_ai::trees::classifier::DecisionTreeClassifier;
+use rusty_ai::trees::regressor::DecisionTreeRegressor;
 use std::collections::HashMap;
 use std::error::Error;
 
@@ -80,10 +83,13 @@ fn read_file_regression(
 }
 
 #[allow(dead_code)]
-fn test_tree_classifier(train_dataset: &Dataset<f64, u8>, test_dataset: &Dataset<f64, u8>) {
+fn test_tree_classifier(
+    train_dataset: &Dataset<f64, u8>,
+    test_dataset: &Dataset<f64, u8>,
+) -> Result<(), String> {
     let mut classifier = DecisionTreeClassifier::with_params(None, None, Some(3));
-    classifier.fit(&train_dataset);
-    let predictions = classifier.predict(&test_dataset.x);
+    classifier.fit(&train_dataset)?;
+    let predictions = classifier.predict(&test_dataset.x)?;
     let mut correct = 0;
     for (prediction, actual) in predictions.iter().zip(test_dataset.y.iter()) {
         if prediction == actual {
@@ -94,6 +100,53 @@ fn test_tree_classifier(train_dataset: &Dataset<f64, u8>, test_dataset: &Dataset
         "Accuracy: {}%",
         (correct as f64 / test_dataset.y.len() as f64) * 100.0
     );
+    Ok(())
+}
+fn test_tree_regressor(
+    train_dataset: &Dataset<f64, f64>,
+    test_dataset: &Dataset<f64, f64>,
+) -> Result<String, Box<dyn Error>> {
+    let mut regressor = DecisionTreeRegressor::with_params(None, Some(3));
+
+    regressor.fit(train_dataset)?;
+
+    let predictions = regressor.predict(&test_dataset.x)?;
+
+    let mse = regressor.mse(&test_dataset.y, &predictions);
+
+    Ok(format!("Predictions MSE: {}", mse))
+}
+
+fn test_random_forest_classifier(
+    train_dataset: &Dataset<f64, u8>,
+    test_dataset: &Dataset<f64, u8>,
+) -> Result<(), String> {
+    let mut classifier = RandomForestClassifier::new();
+    classifier.fit(train_dataset, None)?;
+    let predictions = classifier.predict(&test_dataset.x)?;
+    let mut correct = 0;
+    for (prediction, actual) in predictions.iter().zip(test_dataset.y.iter()) {
+        if prediction == actual {
+            correct += 1;
+        }
+    }
+    println!(
+        "Accuracy: {}%",
+        (correct as f64 / test_dataset.y.len() as f64) * 100.0
+    );
+    Ok(())
+}
+
+fn test_random_forest_regressor(
+    train_dataset: &Dataset<f64, f64>,
+    test_dataset: &Dataset<f64, f64>,
+) -> Result<String, Box<dyn Error>> {
+    let mut regressor = RandomForestRegressor::new();
+    regressor.fit(train_dataset, None)?;
+    let predictions = regressor.predict(&test_dataset.x)?;
+
+    let mse = regressor.mse(&test_dataset.y, &predictions);
+    Ok(format!("Predictions MSE: {}", mse))
 }
 
 #[allow(dead_code)]
@@ -168,6 +221,6 @@ fn main() {
     };
     println!(
         "{:?}",
-        test_linear_regression(&train_dataset, &test_dataset)
+        test_random_forest_regressor(&train_dataset, &test_dataset)
     );
 }

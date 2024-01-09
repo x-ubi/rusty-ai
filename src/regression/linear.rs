@@ -1,8 +1,6 @@
-use std::error::Error;
-
-use nalgebra::{DMatrix, DVector};
-
 use crate::dataset::{Dataset, RealNumber};
+use nalgebra::{DMatrix, DVector};
+use std::error::Error;
 
 pub struct LinearRegression<T: RealNumber> {
     weights: DVector<T>,

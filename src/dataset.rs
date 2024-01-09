@@ -1,6 +1,7 @@
 use nalgebra::{DMatrix, DVector};
 use num_traits::{Float, FromPrimitive, Num, ToPrimitive};
 use rand::seq::SliceRandom;
+use rand::Rng;
 use rand::{rngs::StdRng, SeedableRng};
 use std::cmp::PartialOrd;
 use std::error::Error;
@@ -20,6 +21,8 @@ pub trait DataValue:
     + SubAssign
     + MulAssign
     + DivAssign
+    + Send
+    + Sync
     + 'static
 {
 }
@@ -35,6 +38,8 @@ impl<T> DataValue for T where
         + SubAssign
         + MulAssign
         + DivAssign
+        + Send
+        + Sync
         + 'static
 {
 }
@@ -127,7 +132,7 @@ impl<XT: Number, YT: TargetValue> Dataset<XT, YT> {
         train_size: f64,
         seed: Option<u64>,
     ) -> Result<(Self, Self), Box<dyn Error>> {
-        if train_size < 0.0 || train_size > 1.0 {
+        if !(0.0..=1.0).contains(&train_size) {
             return Err("Train size should be between 0.0 and 1.0".into());
         }
         let mut rng = match seed {
@@ -203,5 +208,28 @@ impl<XT: Number, YT: TargetValue> Dataset<XT, YT> {
         };
 
         (left_dataset, right_dataset)
+    }
+
+    pub fn samples(&self, sample_size: usize, seed: Option<u64>) -> Self {
+        let mut rng = match seed {
+            Some(seed) => StdRng::seed_from_u64(seed),
+            None => StdRng::from_entropy(),
+        };
+
+        let nrows = self.x.nrows();
+        let sample_indices = (0..sample_size)
+            .map(|_| rng.gen_range(0..nrows))
+            .collect::<Vec<_>>();
+
+        let sample_x = sample_indices
+            .iter()
+            .map(|&index| self.x.row(index))
+            .collect::<Vec<_>>();
+        let sample_y = sample_indices
+            .iter()
+            .map(|&index| self.y[index])
+            .collect::<Vec<_>>();
+
+        Self::new(DMatrix::from_rows(&sample_x), DVector::from_vec(sample_y))
     }
 }
