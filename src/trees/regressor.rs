@@ -48,9 +48,11 @@ impl<T: RealNumber> DecisionTreeRegressor<T> {
     }
 
     pub fn fit(&mut self, dataset: &Dataset<T, T>) -> Result<(), String> {
-        self.root = Some(Box::new(
-            self.build_tree(dataset, self.max_depth.map(|_| 0))?,
-        ));
+        self.root = Some(Box::new(self.build_tree(
+            dataset,
+            self.max_depth.map(|_| 0),
+            self.variance(&dataset.y),
+        )?));
         Ok(())
     }
 
@@ -82,10 +84,16 @@ impl<T: RealNumber> DecisionTreeRegressor<T> {
         &mut self,
         dataset: &Dataset<T, T>,
         current_depth: Option<u16>,
+        base_variance: f64,
     ) -> Result<TreeNode<T, T>, String> {
         let (x, y) = &dataset.into_parts();
         let (num_samples, num_features) = x.shape();
-        if num_samples >= self.min_samples_split.into() && current_depth <= self.max_depth {
+
+        let is_homogenous = self.variance(y) < 0.01 * base_variance;
+        if num_samples >= self.min_samples_split.into()
+            && current_depth <= self.max_depth
+            && !is_homogenous
+        {
             let best_split = (0..num_features)
                 .into_par_iter()
                 .filter_map(|feature_index| self.get_split(dataset, feature_index).ok())
@@ -100,8 +108,8 @@ impl<T: RealNumber> DecisionTreeRegressor<T> {
             let right_child = best_split.right;
             if best_split.information_gain > 0.0 {
                 let new_depth = current_depth.map(|depth| depth + 1);
-                let left_node = self.build_tree(&left_child, new_depth)?;
-                let right_node = self.build_tree(&right_child, new_depth)?;
+                let left_node = self.build_tree(&left_child, new_depth, base_variance)?;
+                let right_node = self.build_tree(&right_child, new_depth, base_variance)?;
                 return Ok(TreeNode {
                     feature_index: Some(best_split.feature_index),
                     threshold: Some(best_split.threshold),
