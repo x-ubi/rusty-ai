@@ -6,7 +6,7 @@ use rand::{Rng, SeedableRng};
 use rayon::prelude::*;
 use std::collections::HashMap;
 
-pub struct RandomForestClassifier<XT: Number + Send + Sync, YT: WholeNumber + Send + Sync> {
+pub struct RandomForestClassifier<XT: Number, YT: WholeNumber> {
     trees: Vec<DecisionTreeClassifier<XT, YT>>,
     num_trees: usize,
     min_samples_split: u16,
@@ -15,21 +15,19 @@ pub struct RandomForestClassifier<XT: Number + Send + Sync, YT: WholeNumber + Se
     sample_size: usize,
 }
 
-impl<XT: Number + Send + Sync, YT: WholeNumber + Send + Sync> Default
-    for RandomForestClassifier<XT, YT>
-{
+impl<XT: Number, YT: WholeNumber> Default for RandomForestClassifier<XT, YT> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<XT: Number + Send + Sync, YT: WholeNumber + Send + Sync> RandomForestClassifier<XT, YT> {
+impl<XT: Number, YT: WholeNumber> RandomForestClassifier<XT, YT> {
     pub fn new() -> Self {
         Self {
             trees: Vec::with_capacity(3),
             num_trees: 3,
             min_samples_split: 2,
-            max_depth: Some(0),
+            max_depth: None,
             sample_size: 1000,
             criterion: "gini".to_string(),
         }
@@ -45,7 +43,7 @@ impl<XT: Number + Send + Sync, YT: WholeNumber + Send + Sync> RandomForestClassi
             .map(|_| rng.gen::<u64>())
             .collect::<Vec<_>>();
 
-        self.sample_size = dataset.x.nrows() / 2;
+        self.sample_size = dataset.x.nrows() / 3;
         let trees: Result<Vec<_>, String> = seeds
             .into_par_iter()
             .map(|tree_seed| {

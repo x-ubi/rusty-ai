@@ -98,7 +98,12 @@ impl<XT: Number, YT: WholeNumber> DecisionTreeClassifier<XT, YT> {
     ) -> Result<TreeNode<XT, YT>, String> {
         let (x, y) = &dataset.into_parts();
         let (num_samples, num_features) = x.shape();
-        if num_samples >= self.min_samples_split.into() && current_depth <= self.max_depth {
+        let is_data_homogenous = y.iter().all(|&val| val == y[0]);
+
+        if num_samples >= self.min_samples_split.into()
+            && current_depth <= self.max_depth
+            && !is_data_homogenous
+        {
             let best_split = self.get_best_split(dataset, num_features)?;
             let left_child = best_split.left;
             let right_child = best_split.right;
@@ -147,7 +152,7 @@ impl<XT: Number, YT: WholeNumber> DecisionTreeClassifier<XT, YT> {
 
             for value in &unique_values {
                 let (left_child, right_child) = dataset.split_on_threshold(feature_index, *value);
-                println!("Threshold: {:?}", *value);
+
                 if left_child.is_not_empty() && right_child.is_not_empty() {
                     let current_information_gain =
                         self.calculate_information_gain(&dataset.y, &left_child.y, &right_child.y);
@@ -165,7 +170,7 @@ impl<XT: Number, YT: WholeNumber> DecisionTreeClassifier<XT, YT> {
                 }
             }
         }
-        best_split.ok_or(format!("No best split found. ",))
+        best_split.ok_or(format!("No best split found."))
     }
 
     fn calculate_information_gain(

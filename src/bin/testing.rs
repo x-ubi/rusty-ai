@@ -2,8 +2,10 @@ use csv::ReaderBuilder;
 use nalgebra::{DMatrix, DVector};
 use rusty_ai::dataset::Dataset;
 use rusty_ai::forests::classifier::RandomForestClassifier;
+use rusty_ai::forests::regressor::RandomForestRegressor;
 use rusty_ai::regression::logistic::LogisticRegression;
 use rusty_ai::trees::classifier::DecisionTreeClassifier;
+use rusty_ai::trees::regressor::DecisionTreeRegressor;
 use std::collections::HashMap;
 use std::error::Error;
 
@@ -45,6 +47,38 @@ fn read_file_classification(
     Ok(Dataset::new(feature_matrix, label_vector))
 }
 
+#[allow(dead_code)]
+fn read_file_regression(
+    file_path: &str,
+    dimension: usize,
+    header: bool,
+) -> Result<Dataset<f64, f64>, Box<dyn Error>> {
+    let mut reader = ReaderBuilder::new()
+        .has_headers(header)
+        .from_path(file_path)?;
+    let mut features = Vec::new();
+    let mut labels = Vec::new();
+
+    for result in reader.records() {
+        let record = result?;
+        let mut feature_row = Vec::new();
+
+        for feature in record.iter().take(dimension) {
+            feature_row.push(feature.parse::<f64>()?);
+        }
+
+        let label = record.get(dimension).ok_or("Missing label")?;
+
+        features.push(feature_row);
+        labels.push(label.parse::<f64>()?);
+    }
+    let feature_matrix =
+        DMatrix::from_row_slice(features.len(), features[0].len(), &features.concat());
+    let label_vector = DVector::from_vec(labels);
+
+    Ok(Dataset::new(feature_matrix, label_vector))
+}
+
 fn test_tree_classifier(
     train_dataset: &Dataset<f64, u8>,
     test_dataset: &Dataset<f64, u8>,
@@ -63,6 +97,20 @@ fn test_tree_classifier(
         (correct as f64 / test_dataset.y.len() as f64) * 100.0
     );
     Ok(())
+}
+fn test_tree_regressor(
+    train_dataset: &Dataset<f64, f64>,
+    test_dataset: &Dataset<f64, f64>,
+) -> Result<String, Box<dyn Error>> {
+    let mut regressor = DecisionTreeRegressor::with_params(None, Some(3));
+
+    regressor.fit(train_dataset)?;
+
+    let predictions = regressor.predict(&test_dataset.x)?;
+
+    let mse = regressor.mse(&test_dataset.y, &predictions);
+
+    Ok(format!("Predictions MSE: {}", mse))
 }
 
 fn test_random_forest_classifier(
@@ -83,6 +131,18 @@ fn test_random_forest_classifier(
         (correct as f64 / test_dataset.y.len() as f64) * 100.0
     );
     Ok(())
+}
+
+fn test_random_forest_regressor(
+    train_dataset: &Dataset<f64, f64>,
+    test_dataset: &Dataset<f64, f64>,
+) -> Result<String, Box<dyn Error>> {
+    let mut regressor = RandomForestRegressor::new();
+    regressor.fit(train_dataset, None)?;
+    let predictions = regressor.predict(&test_dataset.x)?;
+
+    let mse = regressor.mse(&test_dataset.y, &predictions);
+    Ok(format!("Predictions MSE: {}", mse))
 }
 
 fn test_logistic_regression(
@@ -106,7 +166,7 @@ fn test_logistic_regression(
 }
 
 fn main() {
-    let mut dataset = match read_file_classification("datasets/cancer_clean.csv", 30, true) {
+    let mut dataset = match read_file_regression("datasets/california_housing.csv", 8, true) {
         Ok(dataset) => {
             println!("Loaded dataset");
             dataset
@@ -119,5 +179,8 @@ fn main() {
         Ok(datasets) => datasets,
         Err(err) => panic!("{}", err),
     };
-    println!("{:?}", test_tree_classifier(&train_dataset, &test_dataset));
+    println!(
+        "{:?}",
+        test_random_forest_regressor(&train_dataset, &test_dataset)
+    );
 }
