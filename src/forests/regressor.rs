@@ -77,12 +77,4 @@ impl<T: RealNumber> RandomForestRegressor<T> {
         }
         Ok(predictions)
     }
-
-    pub fn mse(&self, y_true: &DVector<T>, y_pred: &DVector<T>) -> T {
-        let m = T::from_usize(y_true.len()).unwrap();
-        let errors = y_pred - y_true;
-        let errors_sq = errors.component_mul(&errors);
-
-        errors_sq.sum() / (T::from_f64(2.0).unwrap() * m)
-    }
 }
