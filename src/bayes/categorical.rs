@@ -1,6 +1,9 @@
 use crate::dataset::{Dataset, WholeNumber};
-use nalgebra::DVector;
-use std::collections::{HashMap, HashSet};
+use nalgebra::{DMatrix, DVector};
+use std::{
+    collections::{HashMap, HashSet},
+    error::Error,
+};
 
 pub struct CategoricalNB<T: WholeNumber> {
     feature_class_freq: HashMap<T, DVector<HashMap<T, f64>>>,
@@ -15,7 +18,7 @@ impl<T: WholeNumber> CategoricalNB<T> {
         }
     }
 
-    pub fn fit(&mut self, dataset: &Dataset<T, T>) {
+    pub fn fit(&mut self, dataset: &Dataset<T, T>) -> Result<String, Box<dyn Error>> {
         let (x, y) = dataset.into_parts();
         let y_classes = y.iter().cloned().collect::<HashSet<_>>();
 
@@ -48,5 +51,46 @@ impl<T: WholeNumber> CategoricalNB<T> {
             self.label_class_freq.insert(y_class, label_class_freq);
             self.feature_class_freq.insert(y_class, all_features_freq);
         }
+
+        Ok("Finished fitting".into())
+    }
+
+    fn predict_single(&self, x: &DVector<T>) -> Result<T, Box<dyn Error>> {
+        let mut max_prob = f64::NEG_INFINITY;
+        let mut max_class = T::from_i8(0).unwrap();
+
+        for (y_class, label_freq) in &self.label_class_freq {
+            let mut prob = label_freq.ln();
+            for (idx, feature) in x.iter().enumerate() {
+                prob += self
+                    .feature_class_freq
+                    .get(y_class)
+                    .ok_or(format!("Class {:?} wasn't obtained.", y_class))?[idx]
+                    .get(feature)
+                    .ok_or(format!(
+                        "Class {:?} frequency of feature {:?} wasn't obtained.",
+                        feature, idx
+                    ))?
+                    .ln();
+            }
+
+            if prob > max_prob {
+                max_prob = prob;
+                max_class = *y_class;
+            }
+        }
+
+        Ok(max_class)
+    }
+
+    pub fn predict(&self, x: &DMatrix<T>) -> Result<DVector<T>, Box<dyn Error>> {
+        let mut y_pred = Vec::new();
+
+        for i in 0..x.nrows() {
+            let x_row = x.row(i).transpose();
+            let y_class = self.predict_single(&x_row)?;
+            y_pred.push(y_class);
+        }
+        Ok(DVector::from_vec(y_pred))
     }
 }

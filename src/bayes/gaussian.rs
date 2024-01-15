@@ -1,16 +1,18 @@
 use nalgebra::{DMatrix, DVector};
-use num_traits::Float;
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    error::Error,
+};
 
-use crate::dataset::{Dataset, Number, WholeNumber};
+use crate::dataset::{Dataset, RealNumber, WholeNumber};
 
-pub struct GaussianNB<XT: Number + Float, YT: WholeNumber> {
+pub struct GaussianNB<XT: RealNumber, YT: WholeNumber> {
     class_freq: HashMap<YT, XT>,
     class_mean: HashMap<YT, DVector<XT>>,
     class_variance: HashMap<YT, DVector<XT>>,
 }
 
-impl<XT: Number + Float, YT: WholeNumber> GaussianNB<XT, YT> {
+impl<XT: RealNumber, YT: WholeNumber> GaussianNB<XT, YT> {
     pub fn new() -> Self {
         Self {
             class_freq: HashMap::new(),
@@ -19,7 +21,7 @@ impl<XT: Number + Float, YT: WholeNumber> GaussianNB<XT, YT> {
         }
     }
 
-    pub fn fit(&mut self, dataset: &Dataset<XT, YT>) {
+    pub fn fit(&mut self, dataset: &Dataset<XT, YT>) -> Result<String, Box<dyn Error>> {
         let (x, y) = dataset.into_parts();
         let classes = y.iter().cloned().collect::<HashSet<_>>();
 
@@ -47,6 +49,7 @@ impl<XT: Number + Float, YT: WholeNumber> GaussianNB<XT, YT> {
             self.class_mean.insert(class, mean);
             self.class_variance.insert(class, variance);
         }
+        Ok("Finished fitting".into())
     }
 
     fn mean(&self, x: &DVector<XT>) -> XT {
@@ -64,16 +67,19 @@ impl<XT: Number + Float, YT: WholeNumber> GaussianNB<XT, YT> {
         numerator / XT::from_usize(x.len() - 1).unwrap()
     }
 
-    fn predict_single(&self, x: &DVector<XT>) -> YT {
+    fn predict_single(&self, x: &DVector<XT>) -> Result<YT, Box<dyn Error>> {
         let mut max_log_likelihood = XT::from_f64(f64::NEG_INFINITY).unwrap();
         let mut max_class = YT::from_i8(0).unwrap();
 
         for class in self.class_freq.keys() {
-            let mean = self.class_mean.get(class).expect("Class mean not found.");
+            let mean = self
+                .class_mean
+                .get(class)
+                .ok_or(format!("Mean for class {:?} wasn't calculated.", class))?;
             let variance = self
                 .class_variance
                 .get(class)
-                .expect("Class variance not found.");
+                .ok_or(format!("Variance for class {:?} wasn't calculated.", class))?;
             let variance_epsilon =
                 DVector::<XT>::from_element(variance.len(), XT::from_f64(1e-9).unwrap());
 
@@ -84,26 +90,30 @@ impl<XT: Number + Float, YT: WholeNumber> GaussianNB<XT, YT> {
                 ))
                 .sum()
                 + starting * (variance + &variance_epsilon).map(|v| v.ln()).sum()
-                + self.class_freq.get(class).unwrap().ln();
+                + self
+                    .class_freq
+                    .get(class)
+                    .ok_or(format!("Frequency of class {:?} wasn't obtained.", class))?
+                    .ln();
 
             if log_likelihood > max_log_likelihood {
                 max_log_likelihood = log_likelihood;
                 max_class = *class;
             }
         }
-        max_class
+        Ok(max_class)
     }
 
-    pub fn predict(&self, x: &DMatrix<XT>) -> DVector<YT> {
+    pub fn predict(&self, x: &DMatrix<XT>) -> Result<DVector<YT>, Box<dyn Error>> {
         let mut y_pred = Vec::new();
 
         for i in 0..x.nrows() {
             let x_row = x.row(i).into_owned().transpose();
-            let class = self.predict_single(&x_row);
+            let class = self.predict_single(&x_row)?;
             y_pred.push(class);
         }
 
-        DVector::from(y_pred)
+        Ok(DVector::from_vec(y_pred))
     }
 }
 
@@ -159,7 +169,7 @@ mod tests {
 
         let test_x = DMatrix::from_row_slice(2, 3, &[2.0, 3.0, 4.0, 6.0, 7.0, 8.0]);
 
-        let pred_y = clf.predict(&test_x);
+        let pred_y = clf.predict(&test_x).unwrap();
 
         assert_eq!(pred_y, DVector::from_column_slice(&[0, 1]));
     }
@@ -169,7 +179,7 @@ mod tests {
         let mut clf = GaussianNB::<f64, i32>::new();
         let empty_x = DMatrix::<f64>::zeros(0, 0);
         let empty_y = DVector::<i32>::zeros(0);
-        let empty_pred_y = clf.predict(&empty_x);
+        let empty_pred_y = clf.predict(&empty_x).unwrap();
         assert_eq!(empty_pred_y.len(), 0);
         let dataset = Dataset::new(empty_x, empty_y);
 
@@ -195,7 +205,7 @@ mod tests {
 
         let test_x = DMatrix::from_row_slice(2, 2, &[1.5, 2.5, 2.5, 3.5]);
 
-        let pred_y = clf.predict(&test_x);
+        let pred_y = clf.predict(&test_x).unwrap();
 
         assert_eq!(pred_y, DVector::from_column_slice(&[0, 0]));
     }
@@ -212,7 +222,7 @@ mod tests {
 
         clf.fit(&dataset);
 
-        let y_hat = clf.predict(&x_new);
+        let y_hat = clf.predict(&x_new).unwrap();
 
         assert_eq!(y_hat.len(), 2);
         assert_eq!(y_hat[0], 0);
@@ -240,7 +250,7 @@ mod tests {
 
         let test_x = DMatrix::from_row_slice(2, 3, &[2.0, 3.0, 4.0, 6.0, 7.0, 8.0]);
 
-        let pred_y = clf.predict(&test_x);
+        let pred_y = clf.predict(&test_x).unwrap();
 
         assert_eq!(pred_y, DVector::from_column_slice(&[0, 1]));
     }
