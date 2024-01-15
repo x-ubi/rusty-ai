@@ -105,7 +105,7 @@ impl<XT: RealNumber, YT: WholeNumber> LogisticRegression<XT, YT> {
         let y_xt = DVector::from_vec(y_xt_vec);
         let errors = y_pred - y_xt;
 
-        x.transpose() * errors
+        x.transpose() * errors / XT::from_usize(y.len()).unwrap()
     }
 
     pub fn cross_entropy(&self, x: &DMatrix<XT>, y: &DVector<YT>) -> XT {

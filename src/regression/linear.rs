@@ -93,7 +93,7 @@ impl<T: RealNumber> LinearRegression<T> {
 
         let errors = y_pred - y;
 
-        x.transpose() * errors
+        x.transpose() * errors / T::from_usize(y.len()).unwrap()
     }
 
     fn h(&self, x: &DMatrix<T>) -> DVector<T> {

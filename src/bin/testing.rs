@@ -102,6 +102,8 @@ fn test_tree_classifier(
     );
     Ok(())
 }
+
+#[allow(dead_code)]
 fn test_tree_regressor(
     train_dataset: &Dataset<f64, f64>,
     test_dataset: &Dataset<f64, f64>,
@@ -117,6 +119,7 @@ fn test_tree_regressor(
     Ok(format!("Predictions MSE: {}", mse))
 }
 
+#[allow(dead_code)]
 fn test_random_forest_classifier(
     train_dataset: &Dataset<f64, u8>,
     test_dataset: &Dataset<f64, u8>,
@@ -157,7 +160,7 @@ fn test_logistic_regression(
     let mut classifier = LogisticRegression::new(Some(30), None)?;
     println!(
         "{}",
-        classifier.fit(train_dataset, 0.001, 10000, Some(1e-6), Some(10))?
+        classifier.fit(train_dataset, 0.1, 10000, Some(1e-8), Some(1000))?
     );
     let predictions = classifier.predict(&test_dataset.x);
     let mut correct = 0;
@@ -197,7 +200,7 @@ fn test_linear_regression(
 
     println!(
         "{}",
-        regressor.fit(train_dataset, 0.00001, 1000, Some(1e-9), Some(50))?
+        regressor.fit(train_dataset, 0.01, 10000, Some(1e-9), Some(1000))?
     );
 
     let predictions = regressor.predict(&test_dataset.x);
@@ -206,7 +209,7 @@ fn test_linear_regression(
 }
 
 fn main() {
-    let mut dataset = match read_file_regression("datasets/california_housing.csv", 8, true) {
+    let mut dataset = match read_file_classification("datasets/cancer_clean.csv", 30, true) {
         Ok(dataset) => {
             println!("Loaded dataset");
             dataset
@@ -221,6 +224,6 @@ fn main() {
     };
     println!(
         "{:?}",
-        test_random_forest_regressor(&train_dataset, &test_dataset)
+        test_logistic_regression(&train_dataset, &test_dataset)
     );
 }
