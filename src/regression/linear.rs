@@ -1,10 +1,15 @@
-use crate::dataset::{Dataset, RealNumber};
+use crate::{
+    dataset::{Dataset, RealNumber},
+    metrics::errors::RegressionMetrics,
+};
 use nalgebra::{DMatrix, DVector};
 use std::error::Error;
 
 pub struct LinearRegression<T: RealNumber> {
     weights: DVector<T>,
 }
+
+impl<T: RealNumber> RegressionMetrics<T> for LinearRegression<T> {}
 
 impl<T: RealNumber> LinearRegression<T> {
     pub fn new(
