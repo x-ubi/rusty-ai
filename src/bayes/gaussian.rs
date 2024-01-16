@@ -144,7 +144,7 @@ mod tests {
         let y = DVector::from_column_slice(&[0, 0, 1, 1]);
         let dataset = Dataset::new(x, y);
 
-        clf.fit(&dataset);
+        let _ = clf.fit(&dataset);
 
         assert_abs_diff_eq!(*clf.class_freq.get(&0).unwrap(), 0.5, epsilon = 1e-7);
         assert_abs_diff_eq!(*clf.class_freq.get(&1).unwrap(), 0.5, epsilon = 1e-7);
@@ -164,7 +164,7 @@ mod tests {
         let y = DVector::from_column_slice(&[0, 0, 1, 1]);
         let dataset = Dataset::new(x, y);
 
-        clf.fit(&dataset);
+        let _ = clf.fit(&dataset);
 
         let test_x = DMatrix::from_row_slice(2, 3, &[2.0, 3.0, 4.0, 6.0, 7.0, 8.0]);
 
@@ -182,7 +182,7 @@ mod tests {
         assert_eq!(empty_pred_y.len(), 0);
         let dataset = Dataset::new(empty_x, empty_y);
 
-        clf.fit(&dataset);
+        let _ = clf.fit(&dataset);
         assert_eq!(clf.class_freq.len(), 0);
         assert_eq!(clf.class_mean.len(), 0);
         assert_eq!(clf.class_variance.len(), 0);
@@ -196,7 +196,7 @@ mod tests {
         let y = DVector::from_column_slice(&[0, 0, 0]);
         let dataset = Dataset::new(x, y);
 
-        clf.fit(&dataset);
+        let _ = clf.fit(&dataset);
 
         assert_eq!(clf.class_freq.len(), 1);
         assert_eq!(clf.class_mean.len(), 1);
@@ -219,7 +219,7 @@ mod tests {
         let x_new = DMatrix::from_row_slice(2, 2, &[0.0, 1.0, 1.0, 1.0]);
         let dataset = Dataset::new(x, y);
 
-        clf.fit(&dataset);
+        let _ = clf.fit(&dataset);
 
         let y_hat = clf.predict(&x_new).unwrap();
 
@@ -242,7 +242,7 @@ mod tests {
         let y = DVector::from_column_slice(&[0, 0, 1, 1]);
         let dataset = Dataset::new(x, y);
 
-        clf.fit(&dataset);
+        let _ = clf.fit(&dataset);
 
         assert_abs_diff_eq!(*clf.class_freq.get(&0).unwrap(), 0.5, epsilon = 1e-7);
         assert_abs_diff_eq!(*clf.class_freq.get(&1).unwrap(), 0.5, epsilon = 1e-7);
