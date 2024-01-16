@@ -1,9 +1,12 @@
 //! Decision Tree Regressor
 use super::node::TreeNode;
-use crate::dataset::{Dataset, RealNumber};
+use crate::{
+    dataset::{Dataset, RealNumber},
+    metrics::errors::RegressionMetrics,
+};
 use nalgebra::{DMatrix, DVector};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use std::{f64, marker::PhantomData};
+use std::{error::Error, f64, marker::PhantomData};
 
 pub struct SplitData<T: RealNumber> {
     pub feature_index: usize,
@@ -28,6 +31,8 @@ impl<T: RealNumber> Default for DecisionTreeRegressor<T> {
     }
 }
 
+impl<T: RealNumber> RegressionMetrics<T> for DecisionTreeRegressor<T> {}
+
 impl<T: RealNumber> DecisionTreeRegressor<T> {
     pub fn new() -> Self {
         Self {
@@ -47,13 +52,13 @@ impl<T: RealNumber> DecisionTreeRegressor<T> {
         }
     }
 
-    pub fn fit(&mut self, dataset: &Dataset<T, T>) -> Result<(), String> {
+    pub fn fit(&mut self, dataset: &Dataset<T, T>) -> Result<String, Box<dyn Error>> {
         self.root = Some(Box::new(self.build_tree(
             dataset,
             self.max_depth.map(|_| 0),
             self.variance(&dataset.y),
         )?));
-        Ok(())
+        Ok("Finished building the tree.".into())
     }
 
     pub fn predict(&self, prediction_features: &DMatrix<T>) -> Result<DVector<T>, String> {
@@ -85,7 +90,7 @@ impl<T: RealNumber> DecisionTreeRegressor<T> {
         dataset: &Dataset<T, T>,
         current_depth: Option<u16>,
         base_variance: f64,
-    ) -> Result<TreeNode<T, T>, String> {
+    ) -> Result<TreeNode<T, T>, Box<dyn Error>> {
         let (x, y) = &dataset.into_parts();
         let (num_samples, num_features) = x.shape();
 
@@ -94,16 +99,21 @@ impl<T: RealNumber> DecisionTreeRegressor<T> {
             && current_depth <= self.max_depth
             && !is_homogenous
         {
-            let best_split = (0..num_features)
+            let splits = (0..num_features)
                 .into_par_iter()
-                .filter_map(|feature_index| self.get_split(dataset, feature_index).ok())
-                .max_by(|split_a, split_b| {
-                    split_a
-                        .information_gain
-                        .partial_cmp(&split_b.information_gain)
-                        .unwrap_or(std::cmp::Ordering::Equal)
-                })
-                .unwrap();
+                .map(|feature_idx| self.get_split(dataset, feature_idx))
+                .collect::<Vec<_>>();
+
+            let mut opt_best_split: Option<SplitData<T>> = None;
+            let mut best_gain = f64::NEG_INFINITY;
+            for split_result in splits {
+                let split = split_result?;
+                if split.information_gain > best_gain {
+                    best_gain = split.information_gain;
+                    opt_best_split = Some(split);
+                }
+            }
+            let best_split = opt_best_split.ok_or("No best split found.")?;
             let left_child = best_split.left;
             let right_child = best_split.right;
             if best_split.information_gain > 0.0 {
@@ -155,7 +165,7 @@ impl<T: RealNumber> DecisionTreeRegressor<T> {
                 }
             }
         }
-        best_split.ok_or(format!("No best split found."))
+        best_split.ok_or("No best split found.".into())
     }
 
     fn calculate_variance_reduction(
@@ -186,14 +196,6 @@ impl<T: RealNumber> DecisionTreeRegressor<T> {
         let zero = T::from_f64(0.0).unwrap();
         let sum: T = y.iter().fold(zero, |acc, x| acc + *x);
         sum / T::from_usize(y.len()).unwrap()
-    }
-
-    pub fn mse(&self, y_true: &DVector<T>, y_pred: &DVector<T>) -> T {
-        let m = T::from_usize(y_true.len()).unwrap();
-        let errors = y_pred - y_true;
-        let errors_sq = errors.component_mul(&errors);
-
-        errors_sq.sum() / (T::from_f64(2.0).unwrap() * m)
     }
 }
 

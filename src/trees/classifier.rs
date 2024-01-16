@@ -1,6 +1,7 @@
 use super::node::TreeNode;
 use crate::dataset::{Dataset, Number, WholeNumber};
 use nalgebra::{DMatrix, DVector};
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::f64;
@@ -110,7 +111,24 @@ impl<XT: Number, YT: WholeNumber> DecisionTreeClassifier<XT, YT> {
             && current_depth <= self.max_depth
             && !is_data_homogenous
         {
-            let best_split = self.get_best_split(dataset, num_features)?;
+            let splits = (0..num_features)
+                .into_par_iter()
+                .map(|feature_idx| {
+                    self.get_split(dataset, feature_idx)
+                        .map_err(|err| err.to_string())
+                })
+                .collect::<Vec<_>>();
+
+            let mut opt_best_split: Option<SplitData<XT, YT>> = None;
+            let mut best_gain = f64::NEG_INFINITY;
+            for split_result in splits {
+                let split = split_result?;
+                if split.information_gain > best_gain {
+                    best_gain = split.information_gain;
+                    opt_best_split = Some(split);
+                }
+            }
+            let best_split = opt_best_split.ok_or("No best split found.")?;
             let left_child = best_split.left;
             let right_child = best_split.right;
             if best_split.information_gain > 0.0 {
@@ -142,40 +160,38 @@ impl<XT: Number, YT: WholeNumber> DecisionTreeClassifier<XT, YT> {
             .map(|(val, _)| *val)
     }
 
-    fn get_best_split(
+    fn get_split(
         &self,
         dataset: &Dataset<XT, YT>,
-        num_features: usize,
-    ) -> Result<SplitData<XT, YT>, Box<dyn Error>> {
+        feature_index: usize,
+    ) -> Result<SplitData<XT, YT>, String> {
         let mut best_split: Option<SplitData<XT, YT>> = None;
         let mut best_information_gain = f64::NEG_INFINITY;
 
-        for feature_index in 0..num_features {
-            let mut unique_values: Vec<_> =
-                dataset.x.column(feature_index).iter().cloned().collect();
-            unique_values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-            unique_values.dedup();
+        let mut unique_values: Vec<_> = dataset.x.column(feature_index).iter().cloned().collect();
+        unique_values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        unique_values.dedup();
 
-            for value in &unique_values {
-                let (left_child, right_child) = dataset.split_on_threshold(feature_index, *value);
+        for value in &unique_values {
+            let (left_child, right_child) = dataset.split_on_threshold(feature_index, *value);
 
-                if left_child.is_not_empty() && right_child.is_not_empty() {
-                    let current_information_gain =
-                        self.calculate_information_gain(&dataset.y, &left_child.y, &right_child.y);
+            if left_child.is_not_empty() && right_child.is_not_empty() {
+                let current_information_gain =
+                    self.calculate_information_gain(&dataset.y, &left_child.y, &right_child.y);
 
-                    if current_information_gain > best_information_gain {
-                        best_split = Some(SplitData {
-                            feature_index,
-                            threshold: *value,
-                            left: left_child,
-                            right: right_child,
-                            information_gain: current_information_gain,
-                        });
-                        best_information_gain = current_information_gain;
-                    }
+                if current_information_gain > best_information_gain {
+                    best_split = Some(SplitData {
+                        feature_index,
+                        threshold: *value,
+                        left: left_child,
+                        right: right_child,
+                        information_gain: current_information_gain,
+                    });
+                    best_information_gain = current_information_gain;
                 }
             }
         }
+
         best_split.ok_or("No best split found.".into())
     }
 
@@ -194,7 +210,7 @@ impl<XT: Number, YT: WholeNumber> DecisionTreeClassifier<XT, YT> {
                     - weight_left * Self::gini_impurity(left_y)
                     - weight_right * Self::gini_impurity(right_y)
             }
-            "entropy" => {
+            _ => {
                 Self::entropy(parent_y)
                     - weight_left * Self::entropy(left_y)
                     - weight_right * Self::entropy(right_y)
@@ -241,21 +257,18 @@ mod tests {
 
     #[test]
     fn test_gini_impurity_homogeneous() {
-        let classifier = DecisionTreeClassifier::<f64, u32>::new();
         let y = DVector::from_vec(vec![1, 1, 1, 1]);
         assert_eq!(DecisionTreeClassifier::<f64, u32>::gini_impurity(&y), 0.0);
     }
 
     #[test]
     fn test_gini_impurity_mixed() {
-        let classifier = DecisionTreeClassifier::<f64, u32>::new();
         let y = DVector::from_vec(vec![1, 0, 1, 0]);
         assert!((DecisionTreeClassifier::<f64, u32>::gini_impurity(&y) - 0.5).abs() < f64::EPSILON);
     }
 
     #[test]
     fn test_gini_impurity_multiple_classes() {
-        let classifier = DecisionTreeClassifier::<f64, u32>::new();
         let y = DVector::from_vec(vec![1, 2, 1, 2, 3]);
         let expected_impurity =
             1.0 - (2.0 / 5.0) * (2.0 / 5.0) - (2.0 / 5.0) * (2.0 / 5.0) - (1.0 / 5.0) * (1.0 / 5.0);
