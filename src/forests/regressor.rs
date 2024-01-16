@@ -1,9 +1,12 @@
+use std::error::Error;
+
 use nalgebra::{DMatrix, DVector};
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use rayon::prelude::*;
 
 use crate::{
     dataset::{Dataset, RealNumber},
+    metrics::errors::RegressionMetrics,
     trees::regressor::DecisionTreeRegressor,
 };
 
@@ -12,7 +15,7 @@ pub struct RandomForestRegressor<T: RealNumber> {
     num_trees: usize,
     min_samples_split: u16,
     max_depth: Option<u16>,
-    sample_size: usize,
+    sample_size: Option<usize>,
 }
 
 impl<T: RealNumber> Default for RandomForestRegressor<T> {
@@ -21,18 +24,24 @@ impl<T: RealNumber> Default for RandomForestRegressor<T> {
     }
 }
 
+impl<T: RealNumber> RegressionMetrics<T> for RandomForestRegressor<T> {}
+
 impl<T: RealNumber> RandomForestRegressor<T> {
     pub fn new() -> Self {
         Self {
-            trees: Vec::with_capacity(3),
-            num_trees: 3,
+            trees: Vec::with_capacity(2),
+            num_trees: 2,
             min_samples_split: 2,
             max_depth: None,
-            sample_size: 1000,
+            sample_size: None,
         }
     }
 
-    pub fn fit(&mut self, dataset: &Dataset<T, T>, seed: Option<u64>) -> Result<(), String> {
+    pub fn fit(
+        &mut self,
+        dataset: &Dataset<T, T>,
+        seed: Option<u64>,
+    ) -> Result<String, Box<dyn Error>> {
         let mut rng = match seed {
             Some(seed) => StdRng::seed_from_u64(seed),
             _ => StdRng::from_entropy(),
@@ -42,11 +51,18 @@ impl<T: RealNumber> RandomForestRegressor<T> {
             .map(|_| rng.gen::<u64>())
             .collect::<Vec<_>>();
 
-        self.sample_size = dataset.x.nrows() / 3;
+        match self.sample_size {
+            // @TODO: Remove this after adding with_params()
+            Some(sample_size) if sample_size > dataset.x.nrows() => {
+                return Err("The sample size is greater than the dataset size.".into())
+            }
+            None => self.sample_size = Some(dataset.x.nrows() / self.num_trees),
+            _ => {}
+        }
         let trees: Result<Vec<_>, String> = seeds
             .into_par_iter()
             .map(|tree_seed| {
-                let subset = dataset.samples(self.sample_size, Some(tree_seed));
+                let subset = dataset.samples(self.sample_size.unwrap(), Some(tree_seed));
                 let mut tree = DecisionTreeRegressor::with_params(
                     Some(self.min_samples_split),
                     self.max_depth,
@@ -56,10 +72,10 @@ impl<T: RealNumber> RandomForestRegressor<T> {
             })
             .collect();
         self.trees = trees?;
-        Ok(())
+        Ok("Finished building the trees.".into())
     }
 
-    pub fn predict(&self, features: &DMatrix<T>) -> Result<DVector<T>, String> {
+    pub fn predict(&self, features: &DMatrix<T>) -> Result<DVector<T>, Box<dyn Error>> {
         let mut predictions = DVector::from_element(features.nrows(), T::from_f64(0.0).unwrap());
 
         for i in 0..features.nrows() {

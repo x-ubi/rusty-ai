@@ -5,6 +5,7 @@ use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use rayon::prelude::*;
 use std::collections::HashMap;
+use std::error::Error;
 
 pub struct RandomForestClassifier<XT: Number, YT: WholeNumber> {
     trees: Vec<DecisionTreeClassifier<XT, YT>>,
@@ -12,7 +13,7 @@ pub struct RandomForestClassifier<XT: Number, YT: WholeNumber> {
     min_samples_split: u16,
     max_depth: Option<u16>,
     criterion: String,
-    sample_size: usize,
+    sample_size: Option<usize>,
 }
 
 impl<XT: Number, YT: WholeNumber> Default for RandomForestClassifier<XT, YT> {
@@ -28,12 +29,16 @@ impl<XT: Number, YT: WholeNumber> RandomForestClassifier<XT, YT> {
             num_trees: 3,
             min_samples_split: 2,
             max_depth: None,
-            sample_size: 1000,
+            sample_size: None,
             criterion: "gini".to_string(),
         }
     }
 
-    pub fn fit(&mut self, dataset: &Dataset<XT, YT>, seed: Option<u64>) -> Result<(), String> {
+    pub fn fit(
+        &mut self,
+        dataset: &Dataset<XT, YT>,
+        seed: Option<u64>,
+    ) -> Result<String, Box<dyn Error>> {
         let mut rng = match seed {
             Some(seed) => StdRng::seed_from_u64(seed),
             _ => StdRng::from_entropy(),
@@ -43,35 +48,46 @@ impl<XT: Number, YT: WholeNumber> RandomForestClassifier<XT, YT> {
             .map(|_| rng.gen::<u64>())
             .collect::<Vec<_>>();
 
-        self.sample_size = dataset.x.nrows() / 3;
+        match self.sample_size {
+            // @TODO: Remove this after adding with_params()
+            Some(sample_size) if sample_size > dataset.x.nrows() => {
+                return Err("The sample size is greater than the dataset size.".into())
+            }
+            None => self.sample_size = Some(dataset.x.nrows() / self.num_trees),
+            _ => {}
+        }
+
         let trees: Result<Vec<_>, String> = seeds
             .into_par_iter()
             .map(|tree_seed| {
-                let subset = dataset.samples(self.sample_size, Some(tree_seed));
+                let subset = dataset.samples(self.sample_size.unwrap(), Some(tree_seed));
                 let mut tree = DecisionTreeClassifier::with_params(
                     Some(self.criterion.clone()),
                     Some(self.min_samples_split),
                     self.max_depth,
-                );
+                )
+                .map_err(|error| error.to_string())?;
                 tree.fit(&subset).map_err(|error| error.to_string())?;
                 Ok(tree)
             })
             .collect();
         self.trees = trees?;
-        Ok(())
+        Ok("Finished building the trees".into())
     }
 
-    pub fn predict(&self, features: &DMatrix<XT>) -> Result<DVector<YT>, String> {
+    pub fn predict(&self, features: &DMatrix<XT>) -> Result<DVector<YT>, Box<dyn Error>> {
         let mut predictions = DVector::from_element(features.nrows(), YT::from_u8(0).unwrap());
 
         for i in 0..features.nrows() {
             let mut class_counts = HashMap::new();
             for tree in &self.trees {
-                let prediction = tree.predict(&DMatrix::from_row_slice(
-                    1,
-                    features.ncols(),
-                    features.row(i).transpose().as_slice(),
-                ))?;
+                let prediction = tree
+                    .predict(&DMatrix::from_row_slice(
+                        1,
+                        features.ncols(),
+                        features.row(i).transpose().as_slice(),
+                    ))
+                    .map_err(|error| error.to_string())?;
                 *class_counts.entry(prediction[0]).or_insert(0) += 1;
             }
 
