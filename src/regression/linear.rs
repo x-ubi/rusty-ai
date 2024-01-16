@@ -29,9 +29,9 @@ impl<T: RealNumber> LinearRegression<T> {
         &self.weights
     }
 
-    pub fn predict(&self, x_pred: &DMatrix<T>) -> DVector<T> {
+    pub fn predict(&self, x_pred: &DMatrix<T>) -> Result<DVector<T>, Box<dyn Error>> {
         let x_pred_with_bias = x_pred.clone().insert_column(0, T::from_f64(1.0).unwrap());
-        self.h(&x_pred_with_bias)
+        Ok(self.h(&x_pred_with_bias))
     }
 
     pub fn fit(
@@ -106,14 +106,6 @@ impl<T: RealNumber> LinearRegression<T> {
         let errors = y_pred - y;
         let errors_sq = errors.component_mul(&errors);
 
-        errors_sq.sum() / (T::from_f64(2.0).unwrap() * m)
-    }
-
-    pub fn mse(&self, y_true: &DVector<T>, y_pred: &DVector<T>) -> T {
-        let m = T::from_usize(y_true.len()).unwrap();
-        let errors = y_pred - y_true;
-        let errors_sq = errors.component_mul(&errors);
-
-        errors_sq.sum() / (T::from_f64(2.0).unwrap() * m)
+        errors_sq.sum() / m
     }
 }

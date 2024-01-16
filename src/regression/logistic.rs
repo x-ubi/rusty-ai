@@ -108,11 +108,12 @@ impl<XT: RealNumber, YT: WholeNumber> LogisticRegression<XT, YT> {
         x.transpose() * errors / XT::from_usize(y.len()).unwrap()
     }
 
-    pub fn cross_entropy(&self, x: &DMatrix<XT>, y: &DVector<YT>) -> XT {
+    pub fn cross_entropy(&self, x: &DMatrix<XT>, y: &DVector<YT>) -> Result<XT, Box<dyn Error>> {
         let y_pred: DVector<XT> = self.h(x);
         let one = XT::from_f64(1.0).unwrap();
 
-        y.iter()
+        let cross_entropy = y
+            .iter()
             .zip(y_pred.iter())
             .map(|(&y_i, &y_pred_i)| {
                 let y_i_xt = XT::from(y_i).unwrap();
@@ -120,7 +121,9 @@ impl<XT: RealNumber, YT: WholeNumber> LogisticRegression<XT, YT> {
                     - (one - y_i_xt) * (one - y_pred_i + XT::from_f64(f64::EPSILON).unwrap()).ln()
             })
             .fold(XT::from_f64(0.0).unwrap(), |acc, x| acc + x)
-            / XT::from_usize(y.len()).unwrap()
+            / XT::from_usize(y.len()).unwrap();
+
+        Ok(cross_entropy)
     }
 
     fn h(&self, x: &DMatrix<XT>) -> DVector<XT> {
@@ -130,12 +133,11 @@ impl<XT: RealNumber, YT: WholeNumber> LogisticRegression<XT, YT> {
 
     fn sigmoid(z: XT) -> XT {
         let one = XT::from_f64(1.0).unwrap();
-        if z < XT::from_f64(-10.0).unwrap() {
-            XT::from_f64(0.0).unwrap()
-        } else if z > XT::from_f64(10.0).unwrap() {
-            one
-        } else {
-            one / (one + (-z).exp())
+
+        match z {
+            z if z < XT::from_f64(-10.0).unwrap() => XT::from_f64(0.0).unwrap(),
+            z if z > XT::from_f64(10.0).unwrap() => one,
+            _ => one / (one + (-z).exp()),
         }
     }
 }
@@ -253,7 +255,7 @@ mod tests {
         let labels = DVector::from_vec(vec![1, 0]);
 
         // Compute cross-entropy loss
-        let loss = model.cross_entropy(&features, &labels);
+        let loss = model.cross_entropy(&features, &labels).unwrap();
         // Expected loss value
         let expected_loss = 0.7240769841801067;
 

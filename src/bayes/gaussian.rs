@@ -1,10 +1,9 @@
+use crate::dataset::{Dataset, RealNumber, WholeNumber};
 use nalgebra::{DMatrix, DVector};
 use std::{
     collections::{HashMap, HashSet},
     error::Error,
 };
-
-use crate::dataset::{Dataset, RealNumber, WholeNumber};
 
 pub struct GaussianNB<XT: RealNumber, YT: WholeNumber> {
     class_freq: HashMap<YT, XT>,
