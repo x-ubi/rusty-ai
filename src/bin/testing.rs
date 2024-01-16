@@ -4,6 +4,7 @@ use rusty_ai::bayes::gaussian::GaussianNB;
 use rusty_ai::dataset::Dataset;
 use rusty_ai::forests::classifier::RandomForestClassifier;
 use rusty_ai::forests::regressor::RandomForestRegressor;
+use rusty_ai::metrics::errors::RegressionMetrics;
 use rusty_ai::regression::linear::LinearRegression;
 use rusty_ai::regression::logistic::LogisticRegression;
 use rusty_ai::trees::classifier::DecisionTreeClassifier;
@@ -86,8 +87,8 @@ fn read_file_regression(
 fn test_tree_classifier(
     train_dataset: &Dataset<f64, u8>,
     test_dataset: &Dataset<f64, u8>,
-) -> Result<(), String> {
-    let mut classifier = DecisionTreeClassifier::with_params(None, None, Some(3));
+) -> Result<(), Box<dyn Error>> {
+    let mut classifier = DecisionTreeClassifier::with_params(None, None, None)?;
     classifier.fit(&train_dataset)?;
     let predictions = classifier.predict(&test_dataset.x)?;
     let mut correct = 0;
@@ -114,7 +115,7 @@ fn test_tree_regressor(
 
     let predictions = regressor.predict(&test_dataset.x)?;
 
-    let mse = regressor.mse(&test_dataset.y, &predictions);
+    let mse = regressor.mse(&test_dataset.y, &predictions)?;
 
     Ok(format!("Predictions MSE: {}", mse))
 }
@@ -123,9 +124,9 @@ fn test_tree_regressor(
 fn test_random_forest_classifier(
     train_dataset: &Dataset<f64, u8>,
     test_dataset: &Dataset<f64, u8>,
-) -> Result<(), String> {
+) -> Result<String, Box<dyn Error>> {
     let mut classifier = RandomForestClassifier::new();
-    classifier.fit(train_dataset, None)?;
+    println!("{:?}", classifier.fit(train_dataset, None));
     let predictions = classifier.predict(&test_dataset.x)?;
     let mut correct = 0;
     for (prediction, actual) in predictions.iter().zip(test_dataset.y.iter()) {
@@ -133,13 +134,13 @@ fn test_random_forest_classifier(
             correct += 1;
         }
     }
-    println!(
+    Ok(format!(
         "Accuracy: {}%",
         (correct as f64 / test_dataset.y.len() as f64) * 100.0
-    );
-    Ok(())
+    ))
 }
 
+#[allow(dead_code)]
 fn test_random_forest_regressor(
     train_dataset: &Dataset<f64, f64>,
     test_dataset: &Dataset<f64, f64>,
@@ -148,7 +149,7 @@ fn test_random_forest_regressor(
     regressor.fit(train_dataset, None)?;
     let predictions = regressor.predict(&test_dataset.x)?;
 
-    let mse = regressor.mse(&test_dataset.y, &predictions);
+    let mse = regressor.mse(&test_dataset.y, &predictions)?;
     Ok(format!("Predictions MSE: {}", mse))
 }
 
@@ -179,8 +180,8 @@ fn test_naive_bayes_gaussian(
     test_dataset: &Dataset<f64, u8>,
 ) -> Result<String, Box<dyn Error>> {
     let mut classifier = GaussianNB::new();
-    classifier.fit(&train_dataset);
-    let predictions = classifier.predict(&test_dataset.x);
+    classifier.fit(&train_dataset)?;
+    let predictions = classifier.predict(&test_dataset.x)?;
     let mut correct = 0;
     for (prediction, actual) in predictions.iter().zip(test_dataset.y.iter()) {
         if prediction == actual {
@@ -203,13 +204,13 @@ fn test_linear_regression(
         regressor.fit(train_dataset, 0.01, 10000, Some(1e-9), Some(1000))?
     );
 
-    let predictions = regressor.predict(&test_dataset.x);
-    let mse = regressor.mse(&test_dataset.y, &predictions);
+    let predictions = regressor.predict(&test_dataset.x)?;
+    let mse = regressor.mse(&test_dataset.y, &predictions)?;
     Ok(format!("Predictions MSE: {}", mse))
 }
 
 fn main() {
-    let mut dataset = match read_file_classification("datasets/cancer_clean.csv", 30, true) {
+    let mut dataset = match read_file_regression("datasets/california_housing.csv", 8, true) {
         Ok(dataset) => {
             println!("Loaded dataset");
             dataset
@@ -224,6 +225,6 @@ fn main() {
     };
     println!(
         "{:?}",
-        test_logistic_regression(&train_dataset, &test_dataset)
+        test_random_forest_regressor(&train_dataset, &test_dataset)
     );
 }
