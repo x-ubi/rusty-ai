@@ -2,6 +2,7 @@ use super::node::TreeNode;
 use crate::dataset::{Dataset, Number, WholeNumber};
 use nalgebra::{DMatrix, DVector};
 use std::collections::{HashMap, HashSet};
+use std::error::Error;
 use std::f64;
 use std::marker::PhantomData;
 
@@ -44,31 +45,36 @@ impl<XT: Number, YT: WholeNumber> DecisionTreeClassifier<XT, YT> {
         criterion: Option<String>,
         min_samples_split: Option<u16>,
         max_depth: Option<u16>,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, Box<dyn Error>> {
+        let tree = Self {
             root: None,
             min_samples_split: min_samples_split.unwrap_or(2),
             max_depth,
-            criterion: criterion.unwrap_or("gini".to_string()),
-
+            criterion: match criterion {
+                Some(c) if c == "gini" => "gini".to_string(),
+                Some(c) if c == "entropy" => "entropy".to_string(),
+                Some(_) => return Err("Invalid criterion".into()),
+                _ => "gini".to_string(),
+            },
             _marker: PhantomData,
-        }
+        };
+        Ok(tree)
     }
 
     /// Build the tree from a dataset.
     /// * `dataset` - dataset containing features and labels
-    pub fn fit(&mut self, dataset: &Dataset<XT, YT>) -> Result<(), String> {
+    pub fn fit(&mut self, dataset: &Dataset<XT, YT>) -> Result<String, Box<dyn Error>> {
         self.root = Some(Box::new(
             self.build_tree(dataset, self.max_depth.map(|_| 0))?,
         ));
-        Ok(())
+        Ok("Finished building the tree.".into())
     }
 
     /// Predict the labels for new data.
     /// * `features` - _MxN_ matrix for _M_
-    pub fn predict(&self, features: &DMatrix<XT>) -> Result<DVector<YT>, String> {
+    pub fn predict(&self, features: &DMatrix<XT>) -> Result<DVector<YT>, Box<dyn Error>> {
         if self.root.is_none() {
-            return Err("Tree wasn't built yet.".to_string());
+            return Err("Tree wasn't built yet.".into());
         }
 
         let predictions: Vec<_> = features
@@ -95,7 +101,7 @@ impl<XT: Number, YT: WholeNumber> DecisionTreeClassifier<XT, YT> {
         &mut self,
         dataset: &Dataset<XT, YT>,
         current_depth: Option<u16>,
-    ) -> Result<TreeNode<XT, YT>, String> {
+    ) -> Result<TreeNode<XT, YT>, Box<dyn Error>> {
         let (x, y) = &dataset.into_parts();
         let (num_samples, num_features) = x.shape();
         let is_data_homogenous = y.iter().all(|&val| val == y[0]);
@@ -140,7 +146,7 @@ impl<XT: Number, YT: WholeNumber> DecisionTreeClassifier<XT, YT> {
         &self,
         dataset: &Dataset<XT, YT>,
         num_features: usize,
-    ) -> Result<SplitData<XT, YT>, String> {
+    ) -> Result<SplitData<XT, YT>, Box<dyn Error>> {
         let mut best_split: Option<SplitData<XT, YT>> = None;
         let mut best_information_gain = f64::NEG_INFINITY;
 
@@ -170,7 +176,7 @@ impl<XT: Number, YT: WholeNumber> DecisionTreeClassifier<XT, YT> {
                 }
             }
         }
-        best_split.ok_or(format!("No best split found."))
+        best_split.ok_or("No best split found.".into())
     }
 
     fn calculate_information_gain(
@@ -182,15 +188,21 @@ impl<XT: Number, YT: WholeNumber> DecisionTreeClassifier<XT, YT> {
         let weight_left = left_y.len() as f64 / parent_y.len() as f64;
         let weight_right = right_y.len() as f64 / parent_y.len() as f64;
 
-        if self.criterion == "gini" {
-            return self.gini_impurity(parent_y)
-                - weight_left * self.gini_impurity(left_y)
-                - weight_right * self.gini_impurity(right_y);
+        match self.criterion.as_str() {
+            "gini" => {
+                Self::gini_impurity(parent_y)
+                    - weight_left * Self::gini_impurity(left_y)
+                    - weight_right * Self::gini_impurity(right_y)
+            }
+            "entropy" => {
+                Self::entropy(parent_y)
+                    - weight_left * Self::entropy(left_y)
+                    - weight_right * Self::entropy(right_y)
+            }
         }
-        0.0
     }
 
-    fn gini_impurity(&self, y: &DVector<YT>) -> f64 {
+    fn gini_impurity(y: &DVector<YT>) -> f64 {
         let classes: HashSet<_> = y.iter().collect();
         let mut impurity = 0.0;
         for class in classes.into_iter() {
@@ -198,6 +210,16 @@ impl<XT: Number, YT: WholeNumber> DecisionTreeClassifier<XT, YT> {
             impurity += p_class * p_class;
         }
         1.0 - impurity
+    }
+
+    fn entropy(y: &DVector<YT>) -> f64 {
+        let classes: HashSet<_> = y.iter().collect();
+        let mut entropy = 0.0;
+        for class in classes.into_iter() {
+            let p_class = y.iter().filter(|&x| x == class).count() as f64 / y.len() as f64;
+            entropy += p_class * p_class.log2();
+        }
+        -entropy
     }
 }
 
@@ -221,14 +243,14 @@ mod tests {
     fn test_gini_impurity_homogeneous() {
         let classifier = DecisionTreeClassifier::<f64, u32>::new();
         let y = DVector::from_vec(vec![1, 1, 1, 1]);
-        assert_eq!(classifier.gini_impurity(&y), 0.0);
+        assert_eq!(DecisionTreeClassifier::<f64, u32>::gini_impurity(&y), 0.0);
     }
 
     #[test]
     fn test_gini_impurity_mixed() {
         let classifier = DecisionTreeClassifier::<f64, u32>::new();
         let y = DVector::from_vec(vec![1, 0, 1, 0]);
-        assert!((classifier.gini_impurity(&y) - 0.5).abs() < f64::EPSILON);
+        assert!((DecisionTreeClassifier::<f64, u32>::gini_impurity(&y) - 0.5).abs() < f64::EPSILON);
     }
 
     #[test]
@@ -237,7 +259,10 @@ mod tests {
         let y = DVector::from_vec(vec![1, 2, 1, 2, 3]);
         let expected_impurity =
             1.0 - (2.0 / 5.0) * (2.0 / 5.0) - (2.0 / 5.0) * (2.0 / 5.0) - (1.0 / 5.0) * (1.0 / 5.0);
-        assert!((classifier.gini_impurity(&y) - expected_impurity).abs() < f64::EPSILON);
+        assert!(
+            (DecisionTreeClassifier::<f64, u32>::gini_impurity(&y) - expected_impurity).abs()
+                < f64::EPSILON
+        );
     }
 
     #[test]
@@ -247,9 +272,9 @@ mod tests {
         let left_y = DVector::from_vec(vec![1, 1]);
         let right_y = DVector::from_vec(vec![1, 0, 0, 1]);
 
-        let parent_impurity = classifier.gini_impurity(&parent_y);
-        let left_impurity = classifier.gini_impurity(&left_y);
-        let right_impurity = classifier.gini_impurity(&right_y);
+        let parent_impurity = DecisionTreeClassifier::<f64, u32>::gini_impurity(&parent_y);
+        let left_impurity = DecisionTreeClassifier::<f64, u32>::gini_impurity(&left_y);
+        let right_impurity = DecisionTreeClassifier::<f64, u32>::gini_impurity(&right_y);
 
         let weight_left = left_y.len() as f64 / parent_y.len() as f64;
         let weight_right = right_y.len() as f64 / parent_y.len() as f64;
