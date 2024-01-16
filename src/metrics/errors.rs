@@ -2,7 +2,7 @@ use std::error::Error;
 
 use nalgebra::DVector;
 
-use crate::dataset::RealNumber;
+use crate::data::dataset::RealNumber;
 
 pub trait RegressionMetrics<T: RealNumber> {
     fn mse(&self, y_true: &DVector<T>, y_pred: &DVector<T>) -> Result<T, Box<dyn Error>> {

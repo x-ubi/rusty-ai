@@ -1,4 +1,4 @@
-use crate::dataset::{Number, TargetValue};
+use crate::data::dataset::{Number, TargetValue};
 
 /// Decision tree node
 pub struct TreeNode<XT: Number, YT: TargetValue> {

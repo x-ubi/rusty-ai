@@ -1,4 +1,4 @@
-use crate::dataset::{Dataset, WholeNumber};
+use crate::data::dataset::{Dataset, WholeNumber};
 use nalgebra::{DMatrix, DVector};
 use std::{
     collections::{HashMap, HashSet},

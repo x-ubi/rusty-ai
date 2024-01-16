@@ -1,6 +1,6 @@
 use std::{error::Error, marker::PhantomData};
 
-use crate::dataset::{Dataset, RealNumber, WholeNumber};
+use crate::data::dataset::{Dataset, RealNumber, WholeNumber};
 use nalgebra::{DMatrix, DVector};
 
 pub struct LogisticRegression<XT: RealNumber, YT: WholeNumber> {

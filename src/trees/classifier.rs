@@ -1,5 +1,5 @@
 use super::node::TreeNode;
-use crate::dataset::{Dataset, Number, WholeNumber};
+use crate::data::dataset::{Dataset, Number, WholeNumber};
 use nalgebra::{DMatrix, DVector};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::collections::{HashMap, HashSet};

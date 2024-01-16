@@ -1,4 +1,4 @@
-use crate::dataset::{Dataset, Number, WholeNumber};
+use crate::data::dataset::{Dataset, Number, WholeNumber};
 use crate::trees::classifier::DecisionTreeClassifier;
 use nalgebra::{DMatrix, DVector};
 use rand::rngs::StdRng;
