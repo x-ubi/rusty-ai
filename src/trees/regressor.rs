@@ -1,7 +1,7 @@
 //! Decision Tree Regressor
 use super::node::TreeNode;
 use crate::{
-    dataset::{Dataset, RealNumber},
+    data::dataset::{Dataset, RealNumber},
     metrics::errors::RegressionMetrics,
 };
 use nalgebra::{DMatrix, DVector};

@@ -1,7 +1,7 @@
 use csv::ReaderBuilder;
 use nalgebra::{DMatrix, DVector};
 use rusty_ai::bayes::gaussian::GaussianNB;
-use rusty_ai::dataset::Dataset;
+use rusty_ai::data::dataset::Dataset;
 use rusty_ai::forests::classifier::RandomForestClassifier;
 use rusty_ai::forests::regressor::RandomForestRegressor;
 use rusty_ai::metrics::errors::RegressionMetrics;

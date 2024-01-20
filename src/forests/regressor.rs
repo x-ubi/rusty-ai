@@ -5,7 +5,7 @@ use rand::{rngs::StdRng, Rng, SeedableRng};
 use rayon::prelude::*;
 
 use crate::{
-    dataset::{Dataset, RealNumber},
+    data::dataset::{Dataset, RealNumber},
     metrics::errors::RegressionMetrics,
     trees::regressor::DecisionTreeRegressor,
 };
