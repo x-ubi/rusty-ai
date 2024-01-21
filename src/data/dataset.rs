@@ -96,6 +96,10 @@ impl<XT: Number, YT: TargetValue> Dataset<XT, YT> {
         !(self.x.is_empty() || self.y.is_empty())
     }
 
+    pub fn nrows(&self) -> usize {
+        self.x.nrows()
+    }
+
     pub fn standardize(&mut self)
     where
         XT: RealNumber,
@@ -233,5 +237,100 @@ impl<XT: Number, YT: TargetValue> Dataset<XT, YT> {
             .collect::<Vec<_>>();
 
         Self::new(DMatrix::from_rows(&sample_x), DVector::from_vec(sample_y))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use approx::assert_relative_eq;
+
+    use super::*;
+
+    #[test]
+    fn test_dataset_new() {
+        let x = DMatrix::from_row_slice(2, 2, &[1, 2, 3, 4]);
+        let y = DVector::from_vec(vec![5, 6]);
+        let dataset = Dataset::new(x.clone(), y.clone());
+        assert_eq!(dataset.x, x);
+        assert_eq!(dataset.y, y);
+    }
+
+    #[test]
+    fn test_dataset_into_parts() {
+        let x = DMatrix::from_row_slice(2, 2, &[1, 2, 3, 4]);
+        let y = DVector::from_vec(vec![5, 6]);
+        let dataset = Dataset::new(x.clone(), y.clone());
+        let (x_parts, y_parts) = dataset.into_parts();
+        assert_eq!(x_parts, &x);
+        assert_eq!(y_parts, &y);
+    }
+
+    #[test]
+    fn test_dataset_is_not_empty() {
+        let x = DMatrix::from_row_slice(2, 2, &[1, 2, 3, 4]);
+        let y = DVector::from_vec(vec![5, 6]);
+        let dataset = Dataset::new(x, y);
+        assert!(dataset.is_not_empty());
+
+        let empty_x = DMatrix::<f64>::from_row_slice(0, 2, &[]);
+        let empty_y = DVector::<f64>::from_vec(vec![]);
+        let empty_dataset = Dataset::new(empty_x, empty_y);
+        assert!(!empty_dataset.is_not_empty());
+    }
+
+    #[test]
+    fn test_dataset_standardize() {
+        let x = DMatrix::from_row_slice(3, 2, &[1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
+        let y = DVector::from_vec(vec![7.0, 8.0, 9.0]);
+        let mut dataset = Dataset::new(x, y);
+        println!("{}", dataset.x);
+        dataset.standardize();
+        println!("{}", dataset.x);
+
+        let expected_x = DMatrix::from_row_slice(
+            3,
+            2,
+            &[
+                -1.224744871391589,
+                -1.224744871391589,
+                0.0,
+                0.0,
+                1.224744871391589,
+                1.224744871391589,
+            ],
+        );
+        assert_relative_eq!(dataset.x, expected_x, epsilon = 1e-6);
+    }
+
+    #[test]
+    fn test_dataset_train_test_split() {
+        let x = DMatrix::from_row_slice(4, 2, &[1, 2, 3, 4, 5, 6, 7, 8]);
+        let y = DVector::from_vec(vec![9, 10, 11, 12]);
+        let dataset = Dataset::new(x, y);
+
+        let (train_dataset, test_dataset) = dataset.train_test_split(0.75, None).unwrap();
+        assert_eq!(train_dataset.x.nrows(), 3);
+        assert_eq!(test_dataset.x.nrows(), 1);
+    }
+
+    #[test]
+    fn test_dataset_split_on_threshold() {
+        let x = DMatrix::from_row_slice(4, 2, &[1, 2, 3, 4, 5, 6, 7, 8]);
+        let y = DVector::from_vec(vec![9, 10, 11, 12]);
+        let dataset = Dataset::new(x, y);
+
+        let (left_dataset, right_dataset) = dataset.split_on_threshold(0, 4);
+        assert_eq!(left_dataset.x.nrows(), 2);
+        assert_eq!(right_dataset.x.nrows(), 2);
+    }
+
+    #[test]
+    fn test_dataset_samples() {
+        let x = DMatrix::from_row_slice(4, 2, &[1, 2, 3, 4, 5, 6, 7, 8]);
+        let y = DVector::from_vec(vec![9, 10, 11, 12]);
+        let dataset = Dataset::new(x, y);
+
+        let sampled_dataset = dataset.samples(2, None);
+        assert_eq!(sampled_dataset.x.nrows(), 2);
     }
 }
