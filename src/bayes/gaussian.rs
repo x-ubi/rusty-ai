@@ -20,6 +20,18 @@ impl<XT: RealNumber, YT: WholeNumber> GaussianNB<XT, YT> {
         }
     }
 
+    pub fn class_freq(&self) -> &HashMap<YT, XT> {
+        &self.class_freq
+    }
+
+    pub fn class_mean(&self) -> &HashMap<YT, DVector<XT>> {
+        &self.class_mean
+    }
+
+    pub fn class_variance(&self) -> &HashMap<YT, DVector<XT>> {
+        &self.class_variance
+    }
+
     pub fn fit(&mut self, dataset: &Dataset<XT, YT>) -> Result<String, Box<dyn Error>> {
         let (x, y) = dataset.into_parts();
         let classes = y.iter().cloned().collect::<HashSet<_>>();

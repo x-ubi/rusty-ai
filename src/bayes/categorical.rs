@@ -18,6 +18,14 @@ impl<T: WholeNumber> CategoricalNB<T> {
         }
     }
 
+    pub fn feature_class_freq(&self) -> &HashMap<T, DVector<HashMap<T, f64>>> {
+        &self.feature_class_freq
+    }
+
+    pub fn label_class_freq(&self) -> &HashMap<T, f64> {
+        &self.label_class_freq
+    }
+
     pub fn fit(&mut self, dataset: &Dataset<T, T>) -> Result<String, Box<dyn Error>> {
         let (x, y) = dataset.into_parts();
         let y_classes = y.iter().cloned().collect::<HashSet<_>>();
@@ -93,4 +101,49 @@ impl<T: WholeNumber> CategoricalNB<T> {
         }
         Ok(DVector::from_vec(y_pred))
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use nalgebra::{DMatrix, DVector};
+
+    #[test]
+    fn test_new() {
+        let model = CategoricalNB::<i32>::new();
+
+        assert!(model.feature_class_freq.is_empty());
+        assert!(model.label_class_freq.is_empty());
+    }
+
+    #[test]
+    fn test_fit() {
+        let mut model = CategoricalNB::<i32>::new();
+
+        let x = DMatrix::from_row_slice(3, 3, &[1, 2, 3, 4, 5, 6, 7, 8, 9]);
+        let y = DVector::from_vec(vec![1, 2, 3]);
+        let dataset = Dataset::new(x, y);
+
+        let result = model.fit(&dataset);
+
+        assert!(result.is_ok());
+        assert_eq!(model.label_class_freq.len(), 3);
+        assert_eq!(model.feature_class_freq.len(), 3);
+    }
+
+    // #[test]
+    // fn test_predict() {
+    //     let mut model = CategoricalNB::<i32>::new();
+
+    //     let x = DMatrix::from_row_slice(3, 3, &[1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    //     let y = DVector::from_vec(vec![1, 2, 3]);
+    //     let dataset = Dataset::new(x.clone(), y.clone());
+
+    //     model.fit(&dataset).unwrap();
+
+    //     let result = model.predict(&x);
+    //     println!("{:?}", result);
+    //     //assert!(result.is_ok());
+    //     //assert_eq!(result.unwrap(), y);
+    // }
 }
