@@ -3,6 +3,7 @@ use std::{error::Error, marker::PhantomData};
 use crate::data::dataset::{Dataset, RealNumber, WholeNumber};
 use nalgebra::{DMatrix, DVector};
 
+#[derive(Clone, Debug)]
 pub struct LogisticRegression<XT: RealNumber, YT: WholeNumber> {
     weights: DVector<XT>,
 
@@ -10,7 +11,14 @@ pub struct LogisticRegression<XT: RealNumber, YT: WholeNumber> {
 }
 
 impl<XT: RealNumber, YT: WholeNumber> LogisticRegression<XT, YT> {
-    pub fn new(
+    pub fn new() -> Self {
+        Self {
+            weights: DVector::<XT>::from_element(3, XT::from_f64(1.0).unwrap()),
+            _marker: PhantomData,
+        }
+    }
+
+    pub fn with_params(
         dimension: Option<usize>,
         weights: Option<DVector<XT>>,
     ) -> Result<Self, Box<dyn Error>> {
@@ -18,11 +26,11 @@ impl<XT: RealNumber, YT: WholeNumber> LogisticRegression<XT, YT> {
             (None, None) => Err("Please input the dimension or starting weights.".into()),
 
             (Some(dim), Some(w)) if dim != w.len() - 1 => {
-                Err("The dimension isn't equal the amount of weights.".into())
+                Err("The weights should be longer by 1 than the dimension to account for the bias weight.".into())
             }
             _ => Ok(Self {
                 weights: weights.unwrap_or_else(|| {
-                    DVector::<XT>::from_element(dimension.unwrap() + 1, XT::from_f64(0.0).unwrap())
+                    DVector::<XT>::from_element(dimension.unwrap() + 1, XT::from_f64(1.0).unwrap())
                 }),
                 _marker: PhantomData,
             }),
@@ -69,7 +77,10 @@ impl<XT: RealNumber, YT: WholeNumber> LogisticRegression<XT, YT> {
             if progress.is_some_and(|steps| max_steps % steps == 0) {
                 println!("Step: {:?}", initial_max_steps - max_steps);
                 println!("Weights: {:?}", self.weights);
-                println!("Cross entropy: {:?}", self.cross_entropy(&x_with_bias, y));
+                println!(
+                    "Cross entropy: {:?}",
+                    self.cross_entropy(&x_with_bias, y, false)
+                );
             }
 
             let delta = self
@@ -108,8 +119,17 @@ impl<XT: RealNumber, YT: WholeNumber> LogisticRegression<XT, YT> {
         x.transpose() * errors / XT::from_usize(y.len()).unwrap()
     }
 
-    pub fn cross_entropy(&self, x: &DMatrix<XT>, y: &DVector<YT>) -> Result<XT, Box<dyn Error>> {
-        let y_pred: DVector<XT> = self.h(x);
+    pub fn cross_entropy(
+        &self,
+        x: &DMatrix<XT>,
+        y: &DVector<YT>,
+        testing: bool,
+    ) -> Result<XT, Box<dyn Error>> {
+        let x = match testing {
+            true => x.clone().insert_column(0, XT::from_f64(0.0).unwrap()),
+            false => x.clone(),
+        };
+        let y_pred: DVector<XT> = self.h(&x);
         let one = XT::from_f64(1.0).unwrap();
 
         let cross_entropy = y
@@ -146,56 +166,57 @@ impl<XT: RealNumber, YT: WholeNumber> LogisticRegression<XT, YT> {
 mod tests {
     use super::*;
 
+    #[test]
+    fn test_new() {
+        let model = LogisticRegression::<f64, u8>::new();
+        assert_eq!(model.weights().len(), 3);
+        assert!(model.weights().iter().all(|&w| w == 1.0));
+    }
+
     // Test the creation of a new LogisticRegression model
     #[test]
-    fn test_new_logistic_regression() {
-        let model = LogisticRegression::<f64, u8>::new(Some(3), None);
+    fn test_with_dimension() {
+        let model = LogisticRegression::<f64, u8>::with_params(Some(3), None);
         assert!(model.is_ok());
-    }
-
-    #[test]
-    fn test_new_logistic_regression_nothing_provided() {
-        let model = LogisticRegression::<f64, u8>::new(None, None);
-        assert!(model.is_err());
-    }
-
-    // Test when only dimension is provided
-    #[test]
-    fn test_new_logistic_regression_only_dimension_provided() {
-        let model = LogisticRegression::<f64, u8>::new(Some(3), None);
-        assert!(model.is_ok());
-        assert_eq!(model.unwrap().weights.len(), 4);
+        assert_eq!(model.as_ref().unwrap().weights().len(), 4);
+        assert!(model.unwrap().weights().iter().all(|&w| w == 1.0));
     }
 
     // Test when only starting weights are provided
     #[test]
-    fn test_new_logistic_regression_only_weights_provided() {
-        let weights = DVector::from_vec(vec![0.5, -0.5, 0.2]);
-        let model = LogisticRegression::<f64, u8>::new(None, Some(weights.clone()));
+    fn test_with_weights() {
+        let weights = DVector::from_vec(vec![1.0, 2.0, 3.0]);
+        let model = LogisticRegression::<f64, u8>::with_params(None, Some(weights.clone()));
         assert!(model.is_ok());
         assert_eq!(model.unwrap().weights, weights);
     }
 
+    #[test]
+    fn test_with_params_nothing_provided() {
+        let model = LogisticRegression::<f64, u8>::with_params(None, None);
+        assert!(model.is_err());
+    }
+
     // Test when both dimension and starting weights are provided correctly
     #[test]
-    fn test_new_logistic_regression_dimension_and_weights_provided_correct() {
+    fn test_dimension_and_weights_provided_correct() {
         let weights = DVector::from_vec(vec![0.5, -0.5, 1.0]);
-        let model = LogisticRegression::<f64, u8>::new(Some(2), Some(weights.clone()));
+        let model = LogisticRegression::<f64, u8>::with_params(Some(2), Some(weights.clone()));
         assert!(model.is_ok());
         assert_eq!(model.unwrap().weights, weights);
     }
 
     // Test when both dimension and starting weights are provided incorrectly
     #[test]
-    fn test_new_logistic_regression_dimension_and_weights_provided_incorrect() {
+    fn test_dimension_and_weights_provided_incorrect() {
         let weights = DVector::from_vec(vec![0.5, -0.5]);
-        let model = LogisticRegression::<f64, u8>::new(Some(2), Some(weights));
+        let model = LogisticRegression::<f64, u8>::with_params(Some(2), Some(weights));
         assert!(model.is_err());
     }
 
     #[test]
     fn test_h_function() {
-        let mut model = LogisticRegression::<f64, u8>::new(Some(2), None).unwrap();
+        let mut model = LogisticRegression::<f64, u8>::with_params(Some(2), None).unwrap();
 
         // Set model weights to known values
         model.weights = DVector::from_vec(vec![0.0, 0.5, -0.5]);
@@ -222,13 +243,14 @@ mod tests {
     // Test the prediction functionality
     #[test]
     fn test_predict() {
-        let model =
-            LogisticRegression::<f64, u8>::new(None, Some(DVector::from_vec(vec![0.0, 0.5, -0.5])))
-                .unwrap();
+        let model = LogisticRegression::<f64, u8>::with_params(
+            None,
+            Some(DVector::from_vec(vec![0.0, 0.5, -0.5])),
+        )
+        .unwrap();
 
         let features = DMatrix::from_row_slice(2, 2, &[1.0, 2.0, 3.0, 4.0]);
-        let features_with_bias = features.clone().insert_column(0, 1.0);
-        let predictions = model.predict(&features_with_bias);
+        let predictions = model.predict(&features);
 
         assert_eq!(predictions.len(), 2);
         assert!(predictions.iter().all(|&p| p == 0 || p == 1));
@@ -237,29 +259,92 @@ mod tests {
     // Add more tests for fit, weights update, gradient calculation, etc.
 
     // Test sigmoid function
+
     #[test]
-    fn test_sigmoid() {
+    fn test_sigmoid_less_than_negative_ten() {
+        let value = LogisticRegression::<f64, u8>::sigmoid(-10.1);
+        assert_eq!(value, 0.0);
+    }
+
+    #[test]
+    fn test_sigmoid_zero() {
         let value = LogisticRegression::<f64, u8>::sigmoid(0.0);
         assert!((value - 0.5).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_sigmoid_one() {
+        let value = LogisticRegression::<f64, u8>::sigmoid(1.0);
+        println!("{}", f64::EPSILON);
+        assert!((value - 0.7310585786300049).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_sigmoid_over_ten() {
+        let value = LogisticRegression::<f64, u8>::sigmoid(10.1);
+        assert_eq!(value, 1.0);
+    }
+
+    #[test]
+    fn test_h() {
+        let model = LogisticRegression::<f64, u8>::with_params(
+            None,
+            Some(DVector::from_vec(vec![0.0, 0.5, -0.5])),
+        )
+        .unwrap();
+        let features = DMatrix::from_row_slice(2, 2, &[1.0, 2.0, 3.0, 5.0]);
+        let features_with_bias = features.clone().insert_column(0, 1.0);
+        let value = model.h(&features_with_bias);
+
+        assert!((value[0] - 0.3775406687981454).abs() < f64::EPSILON);
+        assert!((value[1] - 0.2689414213699951).abs() < f64::EPSILON);
     }
 
     // Test cross-entropy calculation
     #[test]
     fn test_cross_entropy() {
-        let model =
-            LogisticRegression::<f64, u8>::new(None, Some(DVector::from_vec(vec![0.0, 0.5, -0.5])))
-                .unwrap();
+        let model = LogisticRegression::<f64, u8>::with_params(
+            None,
+            Some(DVector::from_vec(vec![0.0, 0.5, -0.5])),
+        )
+        .unwrap();
 
         // Create features and labels for testing
         let features = DMatrix::from_row_slice(2, 2, &[1.0, 2.0, 3.0, 4.0]);
         let labels = DVector::from_vec(vec![1, 0]);
 
         // Compute cross-entropy loss
-        let loss = model.cross_entropy(&features, &labels).unwrap();
+        let loss = model.cross_entropy(&features, &labels, true).unwrap();
         // Expected loss value
-        let expected_loss = 0.7240769841801067;
+        let expected_loss = 0.7240769841801062;
 
         // Check if the computed loss is close to the expected value
         assert!((loss - expected_loss).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_gradient() {
+        // Create a logistic regression model
+        let model = LogisticRegression::new();
+
+        // Create a test input matrix and labels
+        let x = DMatrix::from_row_slice(2, 3, &[1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
+        let y = DVector::from_vec(vec![0, 1]);
+
+        // Calculate the gradient
+        let gradient = model.gradient(&x, &y);
+        // Assert the expected gradient shape
+        assert_eq!(gradient.shape(), (3, 1));
+    }
+
+    #[test]
+    fn test_fit() {
+        let mut logistic_regression: LogisticRegression<f64, usize> = LogisticRegression::new();
+        let dataset = Dataset::new(
+            DMatrix::from_row_slice(2, 2, &[1.0, 2.0, 3.0, 4.0]),
+            DVector::from_vec(vec![0, 1]),
+        );
+        let result = logistic_regression.fit(&dataset, 0.1, 100, Some(1e-6), None);
+        assert!(result.is_ok());
     }
 }
