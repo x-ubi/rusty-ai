@@ -5,7 +5,7 @@ use rand::Rng;
 use rand::{rngs::StdRng, SeedableRng};
 use std::cmp::PartialOrd;
 use std::error::Error;
-use std::fmt;
+use std::fmt::{self, Display};
 use std::fmt::{Debug, Formatter};
 use std::hash::Hash;
 use std::ops::{AddAssign, DivAssign, MulAssign, SubAssign};
@@ -23,6 +23,7 @@ pub trait DataValue:
     + DivAssign
     + Send
     + Sync
+    + Display
     + 'static
 {
 }
@@ -40,6 +41,7 @@ impl<T> DataValue for T where
         + DivAssign
         + Send
         + Sync
+        + Display
         + 'static
 {
 }
