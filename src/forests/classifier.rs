@@ -1,5 +1,6 @@
 use crate::data::dataset::{Dataset, Number, WholeNumber};
 use crate::trees::classifier::DecisionTreeClassifier;
+use crate::trees::params::TreeClassifierParams;
 use nalgebra::{DMatrix, DVector};
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
@@ -7,13 +8,12 @@ use rayon::prelude::*;
 use std::collections::HashMap;
 use std::error::Error;
 
+use super::params::ForestParams;
+
+#[derive(Clone, Debug)]
 pub struct RandomForestClassifier<XT: Number, YT: WholeNumber> {
-    trees: Vec<DecisionTreeClassifier<XT, YT>>,
-    num_trees: usize,
-    min_samples_split: u16,
-    max_depth: Option<u16>,
-    criterion: String,
-    sample_size: Option<usize>,
+    forest_params: ForestParams<DecisionTreeClassifier<XT, YT>>,
+    tree_params: TreeClassifierParams,
 }
 
 impl<XT: Number, YT: WholeNumber> Default for RandomForestClassifier<XT, YT> {
@@ -25,13 +25,74 @@ impl<XT: Number, YT: WholeNumber> Default for RandomForestClassifier<XT, YT> {
 impl<XT: Number, YT: WholeNumber> RandomForestClassifier<XT, YT> {
     pub fn new() -> Self {
         Self {
-            trees: Vec::with_capacity(3),
-            num_trees: 3,
-            min_samples_split: 2,
-            max_depth: None,
-            sample_size: None,
-            criterion: "gini".to_string(),
+            forest_params: ForestParams::new(),
+            tree_params: TreeClassifierParams::new(),
         }
+    }
+
+    pub fn with_params(
+        num_trees: Option<usize>,
+        min_samples_split: Option<u16>,
+        max_depth: Option<u16>,
+        criterion: Option<String>,
+        sample_size: Option<usize>,
+    ) -> Result<Self, Box<dyn Error>> {
+        let mut forest = Self::new();
+
+        forest.set_num_trees(num_trees.unwrap_or(3))?;
+        forest.set_sample_size(sample_size)?;
+        forest.set_min_samples_split(min_samples_split.unwrap_or(2))?;
+        forest.set_max_depth(max_depth)?;
+        forest.set_criterion(criterion.unwrap_or("gini".to_string()))?;
+        Ok(forest)
+    }
+
+    pub fn set_trees(&mut self, trees: Vec<DecisionTreeClassifier<XT, YT>>) {
+        self.forest_params.set_trees(trees);
+    }
+
+    pub fn set_num_trees(&mut self, num_trees: usize) -> Result<(), Box<dyn Error>> {
+        self.forest_params.set_num_trees(num_trees)
+    }
+
+    pub fn set_sample_size(&mut self, sample_size: Option<usize>) -> Result<(), Box<dyn Error>> {
+        self.forest_params.set_sample_size(sample_size)
+    }
+
+    pub fn set_min_samples_split(&mut self, min_samples_split: u16) -> Result<(), Box<dyn Error>> {
+        self.tree_params.set_min_samples_split(min_samples_split)
+    }
+
+    pub fn set_max_depth(&mut self, max_depth: Option<u16>) -> Result<(), Box<dyn Error>> {
+        self.tree_params.set_max_depth(max_depth)
+    }
+
+    pub fn set_criterion(&mut self, criterion: String) -> Result<(), Box<dyn Error>> {
+        self.tree_params.set_criterion(criterion)
+    }
+
+    pub fn trees(&self) -> &Vec<DecisionTreeClassifier<XT, YT>> {
+        self.forest_params.trees()
+    }
+
+    pub fn num_trees(&self) -> usize {
+        self.forest_params.num_trees()
+    }
+
+    pub fn sample_size(&self) -> Option<usize> {
+        self.forest_params.sample_size()
+    }
+
+    pub fn min_samples_split(&self) -> u16 {
+        self.tree_params.min_samples_split()
+    }
+
+    pub fn max_depth(&self) -> Option<u16> {
+        self.tree_params.max_depth()
+    }
+
+    pub fn criterion(&self) -> &String {
+        &self.tree_params.criterion
     }
 
     pub fn fit(
@@ -44,34 +105,38 @@ impl<XT: Number, YT: WholeNumber> RandomForestClassifier<XT, YT> {
             _ => StdRng::from_entropy(),
         };
 
-        let seeds = (0..self.num_trees)
+        let seeds = (0..self.num_trees())
             .map(|_| rng.gen::<u64>())
             .collect::<Vec<_>>();
 
-        match self.sample_size {
-            // @TODO: Remove this after adding with_params()
-            Some(sample_size) if sample_size > dataset.x.nrows() => {
-                return Err("The sample size is greater than the dataset size.".into())
+        match self.sample_size() {
+            Some(sample_size) if sample_size > dataset.nrows() => {
+                return Err(format!(
+                    "The set sample size is greater than the dataset size. {} > {}",
+                    sample_size,
+                    dataset.nrows()
+                )
+                .into());
             }
-            None => self.sample_size = Some(dataset.x.nrows() / self.num_trees),
+            None => self.set_sample_size(Some(dataset.nrows() / self.num_trees()))?,
             _ => {}
         }
 
         let trees: Result<Vec<_>, String> = seeds
             .into_par_iter()
             .map(|tree_seed| {
-                let subset = dataset.samples(self.sample_size.unwrap(), Some(tree_seed));
+                let subset = dataset.samples(self.sample_size().unwrap(), Some(tree_seed));
                 let mut tree = DecisionTreeClassifier::with_params(
-                    Some(self.criterion.clone()),
-                    Some(self.min_samples_split),
-                    self.max_depth,
+                    Some(self.criterion().clone()),
+                    Some(self.min_samples_split()),
+                    self.max_depth(),
                 )
                 .map_err(|error| error.to_string())?;
                 tree.fit(&subset).map_err(|error| error.to_string())?;
                 Ok(tree)
             })
             .collect();
-        self.trees = trees?;
+        self.set_trees(trees?);
         Ok("Finished building the trees".into())
     }
 
@@ -80,7 +145,7 @@ impl<XT: Number, YT: WholeNumber> RandomForestClassifier<XT, YT> {
 
         for i in 0..features.nrows() {
             let mut class_counts = HashMap::new();
-            for tree in &self.trees {
+            for tree in self.trees() {
                 let prediction = tree
                     .predict(&DMatrix::from_row_slice(
                         1,

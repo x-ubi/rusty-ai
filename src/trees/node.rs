@@ -1,6 +1,7 @@
 use crate::data::dataset::{Number, TargetValue};
 
 /// Decision tree node
+#[derive(Clone, Debug)]
 pub struct TreeNode<XT: Number, YT: TargetValue> {
     pub feature_index: Option<usize>,
     pub threshold: Option<XT>,

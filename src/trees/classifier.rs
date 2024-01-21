@@ -1,4 +1,5 @@
 use super::node::TreeNode;
+use super::params::TreeClassifierParams;
 use crate::data::dataset::{Dataset, Number, WholeNumber};
 use nalgebra::{DMatrix, DVector};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
@@ -15,11 +16,10 @@ struct SplitData<XT: Number, YT: WholeNumber> {
     information_gain: f64,
 }
 /// Decision Tree Classifier
+#[derive(Clone, Debug)]
 pub struct DecisionTreeClassifier<XT: Number, YT: WholeNumber> {
-    pub root: Option<Box<TreeNode<XT, YT>>>,
-    pub min_samples_split: u16,
-    pub max_depth: Option<u16>,
-    criterion: String,
+    root: Option<Box<TreeNode<XT, YT>>>,
+    tree_params: TreeClassifierParams,
 
     _marker: PhantomData<XT>,
 }
@@ -34,9 +34,7 @@ impl<XT: Number, YT: WholeNumber> DecisionTreeClassifier<XT, YT> {
     pub fn new() -> Self {
         Self {
             root: None,
-            min_samples_split: 2,
-            max_depth: None,
-            criterion: "gini".to_string(),
+            tree_params: TreeClassifierParams::new(),
 
             _marker: PhantomData,
         }
@@ -47,26 +45,42 @@ impl<XT: Number, YT: WholeNumber> DecisionTreeClassifier<XT, YT> {
         min_samples_split: Option<u16>,
         max_depth: Option<u16>,
     ) -> Result<Self, Box<dyn Error>> {
-        let tree = Self {
-            root: None,
-            min_samples_split: min_samples_split.unwrap_or(2),
-            max_depth,
-            criterion: match criterion {
-                Some(c) if c == "gini" => "gini".to_string(),
-                Some(c) if c == "entropy" => "entropy".to_string(),
-                Some(_) => return Err("Invalid criterion".into()),
-                _ => "gini".to_string(),
-            },
-            _marker: PhantomData,
-        };
+        let mut tree = Self::new();
+        tree.set_criterion(criterion.unwrap_or("gini".to_string()))?;
+        tree.set_min_samples_split(min_samples_split.unwrap_or(2))?;
+        tree.set_max_depth(max_depth)?;
         Ok(tree)
+    }
+
+    pub fn set_min_samples_split(&mut self, min_samples_split: u16) -> Result<(), Box<dyn Error>> {
+        self.tree_params.set_min_samples_split(min_samples_split)
+    }
+
+    pub fn set_max_depth(&mut self, max_depth: Option<u16>) -> Result<(), Box<dyn Error>> {
+        self.tree_params.set_max_depth(max_depth)
+    }
+
+    pub fn set_criterion(&mut self, criterion: String) -> Result<(), Box<dyn Error>> {
+        self.tree_params.set_criterion(criterion)
+    }
+
+    pub fn max_depth(&self) -> Option<u16> {
+        self.tree_params.max_depth()
+    }
+
+    pub fn min_samples_split(&self) -> u16 {
+        self.tree_params.min_samples_split()
+    }
+
+    pub fn criterion(&self) -> &str {
+        self.tree_params.criterion()
     }
 
     /// Build the tree from a dataset.
     /// * `dataset` - dataset containing features and labels
     pub fn fit(&mut self, dataset: &Dataset<XT, YT>) -> Result<String, Box<dyn Error>> {
         self.root = Some(Box::new(
-            self.build_tree(dataset, self.max_depth.map(|_| 0))?,
+            self.build_tree(dataset, self.max_depth().map(|_| 0))?,
         ));
         Ok("Finished building the tree.".into())
     }
@@ -107,8 +121,8 @@ impl<XT: Number, YT: WholeNumber> DecisionTreeClassifier<XT, YT> {
         let (num_samples, num_features) = x.shape();
         let is_data_homogenous = y.iter().all(|&val| val == y[0]);
 
-        if num_samples >= self.min_samples_split.into()
-            && current_depth <= self.max_depth
+        if num_samples >= self.min_samples_split().into()
+            && current_depth <= self.max_depth()
             && !is_data_homogenous
         {
             let splits = (0..num_features)
@@ -204,7 +218,7 @@ impl<XT: Number, YT: WholeNumber> DecisionTreeClassifier<XT, YT> {
         let weight_left = left_y.len() as f64 / parent_y.len() as f64;
         let weight_right = right_y.len() as f64 / parent_y.len() as f64;
 
-        match self.criterion.as_str() {
+        match self.criterion() {
             "gini" => {
                 Self::gini_impurity(parent_y)
                     - weight_left * Self::gini_impurity(left_y)
