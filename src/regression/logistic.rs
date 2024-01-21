@@ -338,8 +338,31 @@ mod tests {
     }
 
     #[test]
+    fn test_fit_with_progress_set_to_zero() {
+        let mut model = LogisticRegression::<f64, u8>::new();
+
+        // Create a dummy dataset
+        let x = DMatrix::from_vec(2, 2, vec![1.0, 2.0, 3.0, 4.0]);
+        let y = DVector::from_vec(vec![1, 2]);
+        let dataset = Dataset::new(x, y);
+
+        let lr = 0.1;
+        let max_steps = 100;
+        let epsilon = Some(0.0001);
+        let progress = Some(0);
+
+        let result = model.fit(&dataset, lr, max_steps, epsilon, progress);
+
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "The number of steps for progress visualization must be greater than 0."
+        );
+    }
+
+    #[test]
     fn test_fit() {
-        let mut logistic_regression: LogisticRegression<f64, usize> = LogisticRegression::new();
+        let mut logistic_regression = LogisticRegression::<f64, u8>::new();
         let dataset = Dataset::new(
             DMatrix::from_row_slice(2, 2, &[1.0, 2.0, 3.0, 4.0]),
             DVector::from_vec(vec![0, 1]),
