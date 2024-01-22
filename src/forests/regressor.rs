@@ -19,6 +19,11 @@ pub struct RandomForestRegressor<T: RealNumber> {
 }
 
 impl<T: RealNumber> Default for RandomForestRegressor<T> {
+    /// Creates a new `RandomForestRegressor` with default parameters.
+    ///
+    /// # Returns
+    ///
+    /// A new instance of the `RandomForestRegressor`.
     fn default() -> Self {
         Self::new()
     }
@@ -27,6 +32,11 @@ impl<T: RealNumber> Default for RandomForestRegressor<T> {
 impl<T: RealNumber> RegressionMetrics<T> for RandomForestRegressor<T> {}
 
 impl<T: RealNumber> RandomForestRegressor<T> {
+    /// Creates a new `RandomForestRegressor` with default parameters.
+    ///
+    /// # Returns
+    ///
+    /// A new instance of the `RandomForestRegressor`.
     pub fn new() -> Self {
         Self {
             forest_params: ForestParams::new(),
@@ -34,6 +44,18 @@ impl<T: RealNumber> RandomForestRegressor<T> {
         }
     }
 
+    /// Creates a new `RandomForestRegressor` with the specified parameters.
+    ///
+    /// # Arguments
+    ///
+    /// * `num_trees` - The number of trees in the random forest. If not specified, the default value is 3.
+    /// * `min_samples_split` - The minimum number of samples required to split an internal node. If not specified, the default value is 2.
+    /// * `max_depth` - The maximum depth of the decision trees. If not specified, there is no maximum depth.
+    /// * `sample_size` - The size of the random subsets of the training data used to train each tree. If not specified, the default value is calculated as the total number of samples divided by the number of trees.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` containing the `RandomForestRegressor` if the parameters are valid, or a `Box<dyn Error>` if an error occurs.
     pub fn with_params(
         num_trees: Option<usize>,
         min_samples_split: Option<u16>,
@@ -49,46 +71,102 @@ impl<T: RealNumber> RandomForestRegressor<T> {
         Ok(forest)
     }
 
+    /// Sets the decision trees for the random forest regressor.
+    ///
+    /// # Arguments
+    ///
+    /// * `trees` - A vector of `DecisionTreeRegressor` instances.
     pub fn set_trees(&mut self, trees: Vec<DecisionTreeRegressor<T>>) {
         self.forest_params.set_trees(trees);
     }
 
+    /// Sets the number of trees in the random forest regressor.
+    ///
+    /// # Arguments
+    ///
+    /// * `num_trees` - The number of trees.
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(())` if successful, otherwise returns an error.
     pub fn set_num_trees(&mut self, num_trees: usize) -> Result<(), Box<dyn Error>> {
         self.forest_params.set_num_trees(num_trees)
     }
 
+    /// Sets the sample size for each tree in the random forest regressor.
+    ///
+    /// # Arguments
+    ///
+    /// * `sample_size` - The sample size for each tree. Use `None` for full sample size.
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(())` if successful, otherwise returns an error.
     pub fn set_sample_size(&mut self, sample_size: Option<usize>) -> Result<(), Box<dyn Error>> {
         self.forest_params.set_sample_size(sample_size)
     }
 
+    /// Sets the minimum number of samples required to split an internal node in each decision tree.
+    ///
+    /// # Arguments
+    ///
+    /// * `min_samples_split` - The minimum number of samples required to split an internal node.
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(())` if successful, otherwise returns an error.
     pub fn set_min_samples_split(&mut self, min_samples_split: u16) -> Result<(), Box<dyn Error>> {
         self.tree_params.set_min_samples_split(min_samples_split)
     }
 
+    /// Sets the maximum depth of each decision tree in the random forest regressor.
+    ///
+    /// # Arguments
+    ///
+    /// * `max_depth` - The maximum depth of each decision tree. Use `None` for unlimited depth.
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(())` if successful, otherwise returns an error.
     pub fn set_max_depth(&mut self, max_depth: Option<u16>) -> Result<(), Box<dyn Error>> {
         self.tree_params.set_max_depth(max_depth)
     }
 
+    /// Returns a reference to the decision trees in the random forest regressor.
     pub fn trees(&self) -> &Vec<DecisionTreeRegressor<T>> {
         self.forest_params.trees()
     }
 
+    /// Returns the number of trees in the random forest regressor.
     pub fn num_trees(&self) -> usize {
         self.forest_params.num_trees()
     }
 
+    /// Returns the sample size for each tree in the random forest regressor.
     pub fn sample_size(&self) -> Option<usize> {
         self.forest_params.sample_size()
     }
 
+    /// Returns the minimum number of samples required to split an internal node in each decision tree.
     pub fn min_samples_split(&self) -> u16 {
         self.tree_params.min_samples_split()
     }
 
+    /// Returns the maximum depth of each decision tree in the random forest regressor.
     pub fn max_depth(&self) -> Option<u16> {
         self.tree_params.max_depth()
     }
 
+    /// Fits the random forest regressor to the given dataset.
+    ///
+    /// # Arguments
+    ///
+    /// * `dataset` - The dataset to fit the random forest regressor to.
+    /// * `seed` - The seed for the random number generator. Use `None` for a random seed.
+    ///
+    /// # Returns
+    ///
+    /// Returns a string indicating the completion of the fitting process if successful, otherwise returns an error.
     pub fn fit(
         &mut self,
         dataset: &Dataset<T, T>,
@@ -127,6 +205,15 @@ impl<T: RealNumber> RandomForestRegressor<T> {
         Ok("Finished building the trees.".into())
     }
 
+    /// Predicts the target values for the given features using the random forest regressor.
+    ///
+    /// # Arguments
+    ///
+    /// * `features` - The features to predict the target values for.
+    ///
+    /// # Returns
+    ///
+    /// Returns a vector of predicted target values if successful, otherwise returns an error.
     pub fn predict(&self, features: &DMatrix<T>) -> Result<DVector<T>, Box<dyn Error>> {
         let mut predictions = DVector::from_element(features.nrows(), T::from_f64(0.0).unwrap());
 
