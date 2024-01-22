@@ -72,7 +72,7 @@ impl<XT: Number, YT: TargetValue> Debug for Dataset<XT, YT> {
             for j in 0..self.x.ncols() {
                 write!(f, "{:?}, ", self.x[(i, j)])?;
             }
-            writeln!(f, "]")?;
+            writeln!(f, "],")?;
         }
 
         write!(f, "    ],\n    y: [")?;
@@ -266,6 +266,30 @@ mod tests {
     }
 
     #[test]
+    fn test_dataset_formatting() {
+        // Create a simple dataset
+        let x = DMatrix::from_row_slice(2, 2, &[1, 2, 3, 4]);
+        let y = DVector::from_vec(vec![5, 6]);
+        let dataset = Dataset::new(x, y);
+
+        // Get the string representation of the dataset
+        let dataset_str = format!("{:?}", dataset);
+
+        // Define the expected string
+        let expected_str = "\
+Dataset {
+    x: [
+        [1, 2, ],
+        [3, 4, ],
+    ],
+    y: [5, 6, ]
+}";
+
+        // Compare the generated string with the expected string
+        assert_eq!(dataset_str, expected_str);
+    }
+
+    #[test]
     fn test_dataset_is_not_empty() {
         let x = DMatrix::from_row_slice(2, 2, &[1, 2, 3, 4]);
         let y = DVector::from_vec(vec![5, 6]);
@@ -325,12 +349,44 @@ mod tests {
     }
 
     #[test]
+    fn test_dataset_split_on_threshold_left_empty() {
+        let x = DMatrix::from_row_slice(4, 2, &[1, 2, 3, 4, 5, 6, 7, 8]);
+        let y = DVector::from_vec(vec![9, 10, 11, 12]);
+        let dataset = Dataset::new(x, y);
+
+        let (left_dataset, right_dataset) = dataset.split_on_threshold(0, -1);
+        assert_eq!(left_dataset.x.nrows(), 0);
+        assert_eq!(right_dataset.x.nrows(), 4);
+    }
+
+    #[test]
+    fn test_dataset_split_on_threshold_right_empty() {
+        let x = DMatrix::from_row_slice(4, 2, &[1, 2, 3, 4, 5, 6, 7, 8]);
+        let y = DVector::from_vec(vec![9, 10, 11, 12]);
+        let dataset = Dataset::new(x, y);
+
+        let (left_dataset, right_dataset) = dataset.split_on_threshold(0, 9);
+        assert_eq!(left_dataset.x.nrows(), 4);
+        assert_eq!(right_dataset.x.nrows(), 0);
+    }
+
+    #[test]
     fn test_dataset_samples() {
         let x = DMatrix::from_row_slice(4, 2, &[1, 2, 3, 4, 5, 6, 7, 8]);
         let y = DVector::from_vec(vec![9, 10, 11, 12]);
         let dataset = Dataset::new(x, y);
 
         let sampled_dataset = dataset.samples(2, None);
+        assert_eq!(sampled_dataset.x.nrows(), 2);
+    }
+
+    #[test]
+    fn test_dataset_samples_with_seed() {
+        let x = DMatrix::from_row_slice(4, 2, &[1, 2, 3, 4, 5, 6, 7, 8]);
+        let y = DVector::from_vec(vec![9, 10, 11, 12]);
+        let dataset = Dataset::new(x, y);
+
+        let sampled_dataset = dataset.samples(2, Some(1000));
         assert_eq!(sampled_dataset.x.nrows(), 2);
     }
 }
