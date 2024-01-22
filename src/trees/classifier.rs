@@ -259,6 +259,34 @@ mod tests {
     use nalgebra::DVector;
 
     #[test]
+    fn test_default() {
+        let tree = DecisionTreeClassifier::<f64, u8>::default();
+        assert_eq!(tree.min_samples_split(), 2); // Default min_samples_split
+        assert_eq!(tree.max_depth(), None); // Default max_depth
+        assert_eq!(tree.criterion(), "gini"); // Default criterion
+    }
+
+    #[test]
+    fn test_too_low_min_samples() {
+        let tree = DecisionTreeClassifier::<f64, u8>::new().set_min_samples_split(0);
+        assert!(tree.is_err());
+        assert_eq!(
+            tree.unwrap_err().to_string(),
+            "The minimum number of samples to split must be greater than 1."
+        );
+    }
+
+    #[test]
+    fn test_to_low_depth() {
+        let tree = DecisionTreeClassifier::<f64, u8>::new().set_max_depth(Some(0));
+        assert!(tree.is_err());
+        assert_eq!(
+            tree.unwrap_err().to_string(),
+            "The maximum depth must be greater than 0."
+        );
+    }
+
+    #[test]
     fn test_calculate_information_gain() {
         let classifier = DecisionTreeClassifier::<f64, u8>::new();
         let parent_y = DVector::from_vec(vec![1, 1, 0, 0]);
@@ -293,7 +321,19 @@ mod tests {
     }
 
     #[test]
-    fn test_information_gain() {
+    fn test_entropy() {
+        let y = DVector::from_vec(vec![1, 1, 0, 0]);
+        assert_eq!(DecisionTreeClassifier::<f64, u32>::entropy(&y), 1.0);
+    }
+
+    #[test]
+    fn test_entropy_homogeneous() {
+        let y = DVector::from_vec(vec![1, 1, 1, 1]);
+        assert_eq!(DecisionTreeClassifier::<f64, u32>::entropy(&y), 0.0);
+    }
+
+    #[test]
+    fn test_information_gain_gini() {
         let classifier = DecisionTreeClassifier::<f64, u32>::new();
         let parent_y = DVector::from_vec(vec![1, 1, 1, 0, 0, 1]);
         let left_y = DVector::from_vec(vec![1, 1]);
@@ -309,6 +349,28 @@ mod tests {
             parent_impurity - (weight_left * left_impurity + weight_right * right_impurity);
 
         let result = classifier.calculate_information_gain(&parent_y, &left_y, &right_y);
+        assert!((result - expected_gain).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_information_gain_entropy() {
+        let mut classifier = DecisionTreeClassifier::<f64, u32>::new();
+        classifier.set_criterion("entropy".to_string()).unwrap();
+        let parent_y = DVector::from_vec(vec![1, 1, 1, 0, 0, 1]);
+        let left_y = DVector::from_vec(vec![1, 1]);
+        let right_y = DVector::from_vec(vec![1, 0, 0, 1]);
+
+        let parent_impurity = DecisionTreeClassifier::<f64, u32>::entropy(&parent_y);
+        let left_impurity = DecisionTreeClassifier::<f64, u32>::entropy(&left_y);
+        let right_impurity = DecisionTreeClassifier::<f64, u32>::entropy(&right_y);
+
+        let weight_left = left_y.len() as f64 / parent_y.len() as f64;
+        let weight_right = right_y.len() as f64 / parent_y.len() as f64;
+        let expected_gain =
+            parent_impurity - (weight_left * left_impurity + weight_right * right_impurity);
+
+        let result = classifier.calculate_information_gain(&parent_y, &left_y, &right_y);
+
         assert!((result - expected_gain).abs() < f64::EPSILON);
     }
 
@@ -336,5 +398,15 @@ mod tests {
         assert!(classifier.root.is_some());
 
         // Further checks would depend on your tree structure and the expected outcome after fitting the dataset
+    }
+
+    #[test]
+    fn test_empty_predict() {
+        let classifier = DecisionTreeClassifier::<f64, u32>::new();
+        let features = DMatrix::from_row_slice(0, 0, &[]);
+        let result = classifier.predict(&features);
+
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().to_string(), "Tree wasn't built yet.");
     }
 }
