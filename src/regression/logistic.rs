@@ -50,12 +50,22 @@ pub struct LogisticRegression<XT: RealNumber, YT: WholeNumber> {
 }
 
 impl<XT: RealNumber, YT: WholeNumber> Default for LogisticRegression<XT, YT> {
+    /// Creates a new instance of `LogisticRegression` with default values.
+    ///
+    /// # Returns
+    ///
+    /// A new `LogisticRegression` instance.
     fn default() -> Self {
         Self::new()
     }
 }
 
 impl<XT: RealNumber, YT: WholeNumber> LogisticRegression<XT, YT> {
+    /// Creates a new instance of `LogisticRegression` with default values.
+    ///
+    /// # Returns
+    ///
+    /// A new `LogisticRegression` instance.
     pub fn new() -> Self {
         Self {
             weights: DVector::<XT>::from_element(3, XT::from_f64(1.0).unwrap()),
@@ -63,6 +73,20 @@ impl<XT: RealNumber, YT: WholeNumber> LogisticRegression<XT, YT> {
         }
     }
 
+    /// Creates a new instance of `LogisticRegression` with custom parameters.
+    ///
+    /// # Parameters
+    ///
+    /// * `dimension`: The dimension of the input features. If `None`, it will be inferred from the starting weights.
+    /// * `weights`: The starting weights for the logistic regression model. If `None`, default weights will be used.
+    ///
+    /// # Returns
+    ///
+    /// A new `LogisticRegression` instance.
+    ///
+    /// # Errors
+    ///
+    /// An error is returned if the dimension and weights are incompatible.
     pub fn with_params(
         dimension: Option<usize>,
         weights: Option<DVector<XT>>,
@@ -82,6 +106,15 @@ impl<XT: RealNumber, YT: WholeNumber> LogisticRegression<XT, YT> {
         }
     }
 
+    /// Predicts the target labels for the given input features.
+    ///
+    /// # Parameters
+    ///
+    /// * `x_pred`: The input features to make predictions for.
+    ///
+    /// # Returns
+    ///
+    /// The predicted target labels.
     pub fn predict(&self, x_pred: &DMatrix<XT>) -> DVector<YT> {
         let x_pred_with_bias = x_pred.clone().insert_column(0, XT::from_f64(0.0).unwrap());
 
@@ -94,6 +127,23 @@ impl<XT: RealNumber, YT: WholeNumber> LogisticRegression<XT, YT> {
         })
     }
 
+    /// Fits the logistic regression model to a dataset.
+    ///
+    /// # Parameters
+    ///
+    /// * `dataset`: The dataset to fit the model to.
+    /// * `lr`: The learning rate for gradient descent.
+    /// * `max_steps`: The maximum number of steps for gradient descent.
+    /// * `epsilon`: The convergence threshold for gradient descent. If `None`, a default value is used.
+    /// * `progress`: The number of steps to display progress information. If `None`, no progress is displayed.
+    ///
+    /// # Returns
+    ///
+    /// A string indicating the result of the training process.
+    ///
+    /// # Errors
+    ///
+    /// An error is returned if the progress steps value is 0.
     pub fn fit(
         &mut self,
         dataset: &Dataset<XT, YT>,

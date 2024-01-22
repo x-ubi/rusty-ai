@@ -5,7 +5,6 @@ use crate::{
 use nalgebra::{DMatrix, DVector};
 use std::error::Error;
 
-
 /// Represents a linear regression model.
 ///
 /// The `LinearRegression` struct implements a linear regression model for predicting a target variable based on one or more input features.
