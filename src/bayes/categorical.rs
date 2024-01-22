@@ -8,6 +8,7 @@ use std::{
 pub struct CategoricalNB<T: WholeNumber> {
     feature_class_freq: HashMap<T, DVector<HashMap<T, f64>>>,
     label_class_freq: HashMap<T, f64>,
+    unique_feature_values_count: Vec<usize>,
 }
 
 impl<T: WholeNumber> CategoricalNB<T> {
@@ -15,6 +16,7 @@ impl<T: WholeNumber> CategoricalNB<T> {
         Self {
             feature_class_freq: HashMap::new(),
             label_class_freq: HashMap::new(),
+            unique_feature_values_count: Vec::new(),
         }
     }
 
@@ -29,6 +31,19 @@ impl<T: WholeNumber> CategoricalNB<T> {
     pub fn fit(&mut self, dataset: &Dataset<T, T>) -> Result<String, Box<dyn Error>> {
         let (x, y) = dataset.into_parts();
         let y_classes = y.iter().cloned().collect::<HashSet<_>>();
+
+        let mut unique_feature_values_count_temp = vec![HashSet::new(); x.ncols()];
+
+        x.column_iter().enumerate().for_each(|(idx, feature)| {
+            feature.iter().for_each(|&val| {
+                unique_feature_values_count_temp[idx].insert(val);
+            })
+        });
+
+        self.unique_feature_values_count = unique_feature_values_count_temp
+            .iter()
+            .map(|set| set.len())
+            .collect::<Vec<_>>();
 
         for y_class in y_classes {
             let class_mask = y.map(|label| label == y_class);
@@ -47,9 +62,11 @@ impl<T: WholeNumber> CategoricalNB<T> {
                     *acc.entry(val).or_insert(0) += 1;
                     acc
                 });
+                let total_count =
+                    class_indices.len() as f64 + self.unique_feature_values_count[idx] as f64;
                 let feature_freq = feature_count
                     .into_iter()
-                    .map(|(class, count)| (class, count as f64 / x.ncols() as f64))
+                    .map(|(class, count)| (class, (count as f64 + 1.0 / total_count)))
                     .collect();
                 all_features_freq[idx] = feature_freq;
             }
@@ -69,17 +86,21 @@ impl<T: WholeNumber> CategoricalNB<T> {
 
         for (y_class, label_freq) in &self.label_class_freq {
             let mut prob = label_freq.ln();
+
             for (idx, feature) in x.iter().enumerate() {
-                prob += self
+                let feature_probs = &self
                     .feature_class_freq
                     .get(y_class)
-                    .ok_or(format!("Class {:?} wasn't obtained.", y_class))?[idx]
+                    .ok_or(format!("Class {:?} wasn't obtained.", y_class))?[idx];
+
+                let total_feature_count = self.label_class_freq.values().sum::<f64>()
+                    + self.unique_feature_values_count[idx] as f64;
+                let feature_prob = feature_probs
                     .get(feature)
-                    .ok_or(format!(
-                        "Class {:?} frequency of feature {:?} wasn't obtained.",
-                        feature, idx
-                    ))?
+                    .unwrap_or(&(1.0 / total_feature_count))
                     .ln();
+
+                prob += feature_prob;
             }
 
             if prob > max_prob {
@@ -131,19 +152,54 @@ mod tests {
         assert_eq!(model.feature_class_freq.len(), 3);
     }
 
-    // #[test]
-    // fn test_predict() {
-    //     let mut model = CategoricalNB::<i32>::new();
+    #[test]
+    fn test_predict_single() {
+        let mut model = CategoricalNB::<i32>::new();
 
-    //     let x = DMatrix::from_row_slice(3, 3, &[1, 2, 3, 4, 5, 6, 7, 8, 9]);
-    //     let y = DVector::from_vec(vec![1, 2, 3]);
-    //     let dataset = Dataset::new(x.clone(), y.clone());
+        // Create a simple dataset and fit the model
+        let x = DMatrix::from_row_slice(4, 2, &[1, 0, 1, 1, 0, 0, 0, 1]);
+        let y = DVector::from_vec(vec![0, 0, 1, 1]);
+        let dataset = Dataset::new(x.clone(), y);
+        model.fit(&dataset).unwrap();
 
-    //     model.fit(&dataset).unwrap();
+        // Predict a single instance
+        let test_instance = x.row(0).transpose();
+        let result = model.predict_single(&test_instance).unwrap();
 
-    //     let result = model.predict(&x);
-    //     println!("{:?}", result);
-    //     //assert!(result.is_ok());
-    //     //assert_eq!(result.unwrap(), y);
-    // }
+        // Check if the prediction matches the expected class
+        assert_eq!(result, 0);
+    }
+
+    #[test]
+    fn test_predict_with_unseen_feature_value() {
+        let mut model = CategoricalNB::<i32>::new();
+
+        // Create a simple dataset and fit the model
+        let x = DMatrix::from_row_slice(4, 2, &[1, 0, 1, 1, 0, 0, 0, 1]);
+        let y = DVector::from_vec(vec![0, 0, 1, 1]);
+        let dataset = Dataset::new(x, y);
+        model.fit(&dataset).unwrap();
+
+        // Predict an instance with an unseen feature value
+        let test_instance = DVector::from_vec(vec![2, 2]); // Unseen feature values
+        let result = model.predict_single(&test_instance).unwrap();
+
+        // Just check if it produces a result without errors for now
+        // The correctness of this test depends on your Laplace smoothing implementation
+        assert!(result == 0 || result == 1);
+    }
+
+    #[test]
+    fn test_predict() {
+        let mut model = CategoricalNB::<i32>::new();
+
+        let x = DMatrix::from_row_slice(3, 3, &[1, 2, 3, 4, 5, 6, 7, 8, 9]);
+        let y = DVector::from_vec(vec![3, 2, 1]);
+        let dataset = Dataset::new(x.clone(), y.clone());
+
+        model.fit(&dataset).unwrap();
+        let result = model.predict(&x);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), y);
+    }
 }
