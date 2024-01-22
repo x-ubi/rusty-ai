@@ -4,7 +4,22 @@ use nalgebra::DVector;
 
 use crate::data::dataset::RealNumber;
 
+/// A trait for computing regression metrics.
 pub trait RegressionMetrics<T: RealNumber> {
+    /// Computes the mean squared error (MSE) between the true values and the predicted values.
+    ///
+    /// # Arguments
+    ///
+    /// * `y_true` - The true values.
+    /// * `y_pred` - The predicted values.
+    ///
+    /// # Returns
+    ///
+    /// The mean squared error.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the lengths of `y_true` and `y_pred` are different.
     fn mse(&self, y_true: &DVector<T>, y_pred: &DVector<T>) -> Result<T, Box<dyn Error>> {
         if y_true.len() != y_pred.len() {
             return Err("Predictions and labels are of different sizes.".into());
@@ -17,6 +32,20 @@ pub trait RegressionMetrics<T: RealNumber> {
         Ok(errors_sq.sum() / n)
     }
 
+    /// Computes the mean absolute error (MAE) between the true values and the predicted values.
+    ///
+    /// # Arguments
+    ///
+    /// * `y_true` - The true values.
+    /// * `y_pred` - The predicted values.
+    ///
+    /// # Returns
+    ///
+    /// The mean absolute error.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the lengths of `y_true` and `y_pred` are different.
     fn mae(&self, y_true: &DVector<T>, y_pred: &DVector<T>) -> Result<T, Box<dyn Error>> {
         if y_true.len() != y_pred.len() {
             return Err("Predictions and labels are of different sizes.".into());
@@ -31,6 +60,20 @@ pub trait RegressionMetrics<T: RealNumber> {
         Ok(abs_errors_sum / n)
     }
 
+    /// Computes the coefficient of determination (R^2) between the true values and the predicted values.
+    ///
+    /// # Arguments
+    ///
+    /// * `y_true` - The true values.
+    /// * `y_pred` - The predicted values.
+    ///
+    /// # Returns
+    ///
+    /// The coefficient of determination (R^2).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the lengths of `y_true` and `y_pred` are different.
     fn r2(&self, y_true: &DVector<T>, y_pred: &DVector<T>) -> Result<T, Box<dyn Error>> {
         if y_true.len() != y_pred.len() {
             return Err("Predictions and labels are of different sizes.".into());

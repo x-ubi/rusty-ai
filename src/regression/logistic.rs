@@ -3,6 +3,45 @@ use std::{error::Error, marker::PhantomData};
 use crate::data::dataset::{Dataset, RealNumber, WholeNumber};
 use nalgebra::{DMatrix, DVector};
 
+/// Logistic regression model for binary classification.
+///
+/// This struct represents a logistic regression model for binary classification. It uses the sigmoid function to map the input features to a probability between 0 and 1, and makes predictions based on a threshold of 0.5.
+///
+/// # Type Parameters
+///
+/// * `XT`: The type of the input features.
+/// * `YT`: The type of the target labels.
+///
+/// # Fields
+///
+/// * `weights`: The weights of the logistic regression model, with the first being the bias weight.
+/// * `_marker`: A marker field to indicate the target label type.
+///
+/// # Examples
+///
+/// ```
+/// use rusty_ai::regression::logistic::LogisticRegression;
+/// use rusty_ai::data::dataset::Dataset;
+/// use nalgebra::{DMatrix, DVector};
+///
+/// // Create a new logistic regression model
+/// let mut model: LogisticRegression<f64, u8> = LogisticRegression::new();
+///
+/// // Fit the model to a dataset
+/// let x = DMatrix::from_row_slice(3, 2, &[1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
+/// let y = DVector::from_vec(vec![0, 1, 0]);
+/// let dataset = Dataset::new(x, y);
+/// let lr = 0.01;
+/// let max_steps = 1000;
+/// let epsilon = Some(0.001);
+/// let progress = Some(100);
+/// let result = model.fit(&dataset, lr, max_steps, epsilon, progress);
+///
+/// // Make predictions using the trained model
+/// let x_pred = /* ... */;
+/// let predictions = model.predict(&x_pred);
+/// ```
+
 #[derive(Clone, Debug)]
 pub struct LogisticRegression<XT: RealNumber, YT: WholeNumber> {
     weights: DVector<XT>,

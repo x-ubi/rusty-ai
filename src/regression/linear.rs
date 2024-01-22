@@ -5,6 +5,46 @@ use crate::{
 use nalgebra::{DMatrix, DVector};
 use std::error::Error;
 
+
+/// Represents a linear regression model.
+///
+/// The `LinearRegression` struct implements a linear regression model for predicting a target variable based on one or more input features.
+/// It uses the least squares method to estimate the weights of the linear model.
+///
+/// # Type Parameters
+///
+/// * `T`: The numeric type used for calculations. Must implement the `RealNumber` trait.
+///
+/// # Fields
+///
+/// * `weights`: The weights of the logistic regression model, with the first being the bias weight.
+///
+/// # Examples
+///
+/// ```
+/// use rusty_ai::regression::linear::LinearRegression;
+/// use rusty_ai::data::dataset::Dataset;
+/// use nalgebra::{DMatrix, DVector};
+///
+/// // Create a new linear regression model
+/// let mut model = LinearRegression::<f64>::new();
+///
+/// // Fit the model to a dataset
+/// let x = DMatrix::from_row_slice(3, 2, &[1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
+/// let y = DVector::from_vec(vec![1.5, 2.5, 3.5]);
+/// let dataset = Dataset::new(x, y);
+/// let learning_rate = 0.01;
+/// let max_steps = 1000;
+/// let epsilon = Some(0.001);
+/// let progress = Some(100);
+/// let result = model.fit(&dataset, learning_rate, max_steps, epsilon, progress);
+///
+/// // Make predictions using the trained model
+/// let x_test = DMatrix::from_row_slice(2, 2, &[1.0, 2.0, 3.0, 4.0]);
+/// let predictions = model.predict(&x_test);
+/// assert!(predictions.is_ok());
+/// ```
+
 #[derive(Clone, Debug)]
 pub struct LinearRegression<T: RealNumber> {
     weights: DVector<T>,
@@ -13,18 +53,40 @@ pub struct LinearRegression<T: RealNumber> {
 impl<T: RealNumber> RegressionMetrics<T> for LinearRegression<T> {}
 
 impl<T: RealNumber> Default for LinearRegression<T> {
+    /// Creates a new `LinearRegression` model with default weights.
+    ///
+    /// The default weights are initialized to 1.0 for each feature, including the bias weight.
     fn default() -> Self {
         Self::new()
     }
 }
 
 impl<T: RealNumber> LinearRegression<T> {
+    /// Creates a new `LinearRegression` model with default weights.
+    ///
+    /// The default weights are initialized to 1.0 for each feature, including the bias weight.
     pub fn new() -> Self {
         Self {
             weights: DVector::<T>::from_element(3, T::from_f64(1.0).unwrap()),
         }
     }
 
+    /// Creates a new `LinearRegression` model with custom parameters.
+    ///
+    /// # Arguments
+    ///
+    /// * `dimension`: The dimension of the input features. If `None`, the dimension will be inferred from the provided weights.
+    /// * `weights`: The initial weights for the linear regression model. If `None`, default weights will be used.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Result` containing the `LinearRegression` model if the parameters are valid, or an error message if the parameters are invalid.
+    ///
+    /// # Errors
+    ///
+    /// An error will be returned if:
+    /// * Both `dimension` and `weights` are `None`.
+    /// * The length of `weights` is not equal to `dimension + 1` to account for the bias weight.
     pub fn with_params(
         dimension: Option<usize>,
         weights: Option<DVector<T>>,
@@ -43,15 +105,44 @@ impl<T: RealNumber> LinearRegression<T> {
         }
     }
 
+    /// Returns a reference to the weights of the linear regression model.
     pub fn weights(&self) -> &DVector<T> {
         &self.weights
     }
 
+    /// Makes predictions using the trained linear regression model.
+    ///
+    /// # Arguments
+    ///
+    /// * `x_pred`: The input features for which to make predictions.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Result` containing the predicted target values if successful, or an error message if an error occurs during prediction.
     pub fn predict(&self, x_pred: &DMatrix<T>) -> Result<DVector<T>, Box<dyn Error>> {
         let x_pred_with_bias = x_pred.clone().insert_column(0, T::from_f64(1.0).unwrap());
         Ok(self.h(&x_pred_with_bias))
     }
 
+    /// Fits the linear regression model to a dataset.
+    ///
+    /// # Arguments
+    ///
+    /// * `dataset`: The dataset containing the input features and target values.
+    /// * `lr`: The learning rate for gradient descent.
+    /// * `max_steps`: The maximum number of steps to perform during training.
+    /// * `epsilon`: The convergence threshold. If the change in weights is below this threshold, training will stop.
+    /// * `progress`: The number of steps at which to display progress information. If `None`, no progress information will be displayed.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Result` containing a success message if training is successful, or an error message if an error occurs during training.
+    ///
+    /// # Errors
+    ///
+    /// An error will be returned if:
+    /// * The number of steps for progress visualization is 0.
+    /// * The gradient turns to NaN during training.
     pub fn fit(
         &mut self,
         dataset: &Dataset<T, T>,
