@@ -15,7 +15,45 @@ struct SplitData<XT: Number, YT: WholeNumber> {
     pub right: Dataset<XT, YT>,
     information_gain: f64,
 }
-/// Decision Tree Classifier
+/// Implementation of a decision tree classifier.
+///
+/// This struct represents a decision tree classifier, which is a supervised machine learning algorithm
+/// used for classification tasks. It can be used to build a decision tree from a dataset and make
+/// predictions on new data.
+///
+/// # Type Parameters
+///
+/// - `XT`: The type of the features in the dataset.
+/// - `YT`: The type of the labels in the dataset.
+///
+/// # Examples
+///
+/// ```
+/// use rusty_ai::trees::classifier::DecisionTreeClassifier;
+/// use rusty_ai::data::dataset::Dataset;
+/// use nalgebra::{DMatrix, DVector};
+///
+/// // Create a new decision tree classifier
+/// let mut tree = DecisionTreeClassifier::<f64, u8>::new();
+///
+/// // Set the minimum number of samples required to split an internal node
+/// tree.set_min_samples_split(5).unwrap();
+///
+/// // Set the maximum depth of the tree
+/// tree.set_max_depth(Some(10)).unwrap();
+///
+///
+///
+/// let x = DMatrix::from_row_slice(3, 2, &[1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
+/// let y = DVector::from_vec(vec![0, 1, 0]);
+/// let dataset = Dataset::new(x, y);
+/// tree.fit(&dataset).unwrap();
+///
+/// // Make predictions on new data points
+/// let x_test = DMatrix::from_row_slice(2, 2, &[1.0, 2.0, 3.0, 4.0]);
+/// let predictions = tree.predict(&x_test);
+/// assert!(predictions.is_ok());
+/// ```
 #[derive(Clone, Debug)]
 pub struct DecisionTreeClassifier<XT: Number, YT: WholeNumber> {
     root: Option<Box<TreeNode<XT, YT>>>,
@@ -40,6 +78,21 @@ impl<XT: Number, YT: WholeNumber> DecisionTreeClassifier<XT, YT> {
         }
     }
 
+    /// Creates a new instance of the decision tree classifier with custom parameters.
+    ///
+    /// # Arguments
+    ///
+    /// * `criterion` - The criterion used for splitting nodes. Default is "gini".
+    /// * `min_samples_split` - The minimum number of samples required to split an internal node. Default is 2.
+    /// * `max_depth` - The maximum depth of the tree. Default is None (unlimited depth).
+    ///
+    /// # Returns
+    ///
+    /// A new instance of the decision tree classifier with the specified parameters.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the classifier is unknown, the minimum number of samples to split is less than 2, or if the maximum depth is less than 1.
     pub fn with_params(
         criterion: Option<String>,
         min_samples_split: Option<u16>,
@@ -52,32 +105,73 @@ impl<XT: Number, YT: WholeNumber> DecisionTreeClassifier<XT, YT> {
         Ok(tree)
     }
 
+    /// Sets the minimum number of samples required to split an internal node.
+    ///
+    /// # Arguments
+    ///
+    /// * `min_samples_split` - The minimum number of samples required to split an internal node.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the minimum number of samples to split is less than 2.
     pub fn set_min_samples_split(&mut self, min_samples_split: u16) -> Result<(), Box<dyn Error>> {
         self.tree_params.set_min_samples_split(min_samples_split)
     }
 
+    /// Sets the maximum depth of the tree.
+    ///
+    /// # Arguments
+    ///
+    /// * `max_depth` - The maximum depth of the tree.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the maximum depth is less than 1.
     pub fn set_max_depth(&mut self, max_depth: Option<u16>) -> Result<(), Box<dyn Error>> {
         self.tree_params.set_max_depth(max_depth)
     }
 
+    /// Sets the criterion used for splitting nodes.
+    ///
+    /// # Arguments
+    ///
+    /// * `criterion` - The criterion used for splitting nodes.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the criterion is not supported.
     pub fn set_criterion(&mut self, criterion: String) -> Result<(), Box<dyn Error>> {
         self.tree_params.set_criterion(criterion)
     }
 
+    /// Returns the maximum depth of the tree.
     pub fn max_depth(&self) -> Option<u16> {
         self.tree_params.max_depth()
     }
 
+    /// Returns the minimum number of samples required to split an internal node.
     pub fn min_samples_split(&self) -> u16 {
         self.tree_params.min_samples_split()
     }
 
+    /// Returns the criterion used for splitting nodes.
     pub fn criterion(&self) -> &str {
         self.tree_params.criterion()
     }
 
-    /// Build the tree from a dataset.
-    /// * `dataset` - dataset containing features and labels
+    /// Builds the decision tree from a dataset.
+    ///
+    /// # Arguments
+    ///
+    /// * `dataset` - The dataset containing features and labels.
+    ///
+    /// # Returns
+    ///
+    /// A string indicating that the tree was built successfully.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the tree couldn't be built.
     pub fn fit(&mut self, dataset: &Dataset<XT, YT>) -> Result<String, Box<dyn Error>> {
         self.root = Some(Box::new(
             self.build_tree(dataset, self.max_depth().map(|_| 0))?,
@@ -85,8 +179,19 @@ impl<XT: Number, YT: WholeNumber> DecisionTreeClassifier<XT, YT> {
         Ok("Finished building the tree.".into())
     }
 
-    /// Predict the labels for new data.
-    /// * `features` - _MxN_ matrix for _M_
+    /// Predicts the labels for new data.
+    ///
+    /// # Arguments
+    ///
+    /// * `features` - The matrix of features for the new data.
+    ///
+    /// # Returns
+    ///
+    /// A vector containing the predicted labels for the new data.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the tree wasn't built yet.
     pub fn predict(&self, features: &DMatrix<XT>) -> Result<DVector<YT>, Box<dyn Error>> {
         if self.root.is_none() {
             return Err("Tree wasn't built yet.".into());

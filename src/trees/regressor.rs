@@ -26,6 +26,7 @@ pub struct DecisionTreeRegressor<T: RealNumber> {
 }
 
 impl<T: RealNumber> Default for DecisionTreeRegressor<T> {
+            /// Creates a new instance of the decision tree regressor with default parameters.
     fn default() -> Self {
         Self::new()
     }
@@ -34,6 +35,7 @@ impl<T: RealNumber> Default for DecisionTreeRegressor<T> {
 impl<T: RealNumber> RegressionMetrics<T> for DecisionTreeRegressor<T> {}
 
 impl<T: RealNumber> DecisionTreeRegressor<T> {
+        /// Creates a new instance of the decision tree regressor with default parameters.
     pub fn new() -> Self {
         Self {
             root: None,
@@ -42,6 +44,20 @@ impl<T: RealNumber> DecisionTreeRegressor<T> {
         }
     }
 
+    /// Creates a new instance of the decision tree regressor with custom parameters.
+    ///
+    /// # Arguments
+    ///
+    /// * `min_samples_split` - The minimum number of samples required to split an internal node.
+    /// * `max_depth` - The maximum depth of the tree.
+    ///
+    /// # Returns
+    ///
+    /// A new instance of the decision tree regressor with the specified parameters.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the minimum number of samples to split is less than 2 or if the maximum depth is less than 1.
     pub fn with_params(
         min_samples_split: Option<u16>,
         max_depth: Option<u16>,
@@ -53,22 +69,55 @@ impl<T: RealNumber> DecisionTreeRegressor<T> {
         Ok(tree)
     }
 
+        /// Sets the minimum number of samples required to split an internal node.
+    ///
+    /// # Arguments
+    ///
+    /// * `min_samples_split` - The minimum number of samples required to split an internal node.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the minimum number of samples to split is less than 2.
     pub fn set_min_samples_split(&mut self, min_samples_split: u16) -> Result<(), Box<dyn Error>> {
         self.tree_params.set_min_samples_split(min_samples_split)
     }
 
+        /// Sets the maximum depth of the tree.
+    ///
+    /// # Arguments
+    ///
+    /// * `max_depth` - The maximum depth of the tree.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the maximum depth is less than 1.
     pub fn set_max_depth(&mut self, max_depth: Option<u16>) -> Result<(), Box<dyn Error>> {
         self.tree_params.set_max_depth(max_depth)
     }
 
+        /// Returns the maximum depth of the tree.
     pub fn max_depth(&self) -> Option<u16> {
         self.tree_params.max_depth()
     }
 
+        /// Returns the minimum number of samples required to split an internal node.
     pub fn min_samples_split(&self) -> u16 {
         self.tree_params.min_samples_split()
     }
 
+        /// Builds the decision tree from a dataset.
+    ///
+    /// # Arguments
+    ///
+    /// * `dataset` - The dataset containing features and labels.
+    ///
+    /// # Returns
+    ///
+    /// A string indicating that the tree was built successfully.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the tree couldn't be built.
     pub fn fit(&mut self, dataset: &Dataset<T, T>) -> Result<String, Box<dyn Error>> {
         self.root = Some(Box::new(self.build_tree(
             dataset,
@@ -78,6 +127,19 @@ impl<T: RealNumber> DecisionTreeRegressor<T> {
         Ok("Finished building the tree.".into())
     }
 
+    /// Predicts the labels for new data.
+    ///
+    /// # Arguments
+    ///
+    /// * `features` - The matrix of features for the new data.
+    ///
+    /// # Returns
+    ///
+    /// A vector containing the predicted target values for the new data.
+    ///
+    /// # Errors
+    ///
+    /// This method will return an error if the tree wasn't built yet.
     pub fn predict(&self, prediction_features: &DMatrix<T>) -> Result<DVector<T>, String> {
         if self.root.is_none() {
             return Err("Tree wasn't built yet.".to_string());
