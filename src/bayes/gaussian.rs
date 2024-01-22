@@ -134,7 +134,7 @@ mod tests {
     use approx::assert_abs_diff_eq;
 
     #[test]
-    fn test_default_initialization() {
+    fn test_new() {
         let clf = GaussianNB::<f64, i32>::new();
 
         assert!(clf.class_freq.is_empty());
