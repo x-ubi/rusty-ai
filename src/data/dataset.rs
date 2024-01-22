@@ -83,23 +83,91 @@ impl<XT: Number, YT: TargetValue> Debug for Dataset<XT, YT> {
     }
 }
 
+/// Implementation of a generic dataset structure.
+///
+/// This structure represents a dataset consisting of input features (`x`) and target values (`y`).
+/// It provides various methods for manipulating and analyzing the dataset.
+///
+/// # Type Parameters
+///
+/// - `XT`: The type of the input features.
+/// - `YT`: The type of the target values.
+///
+/// # Examples
+///
+/// ```
+/// use nalgebra::{DMatrix, DVector};
+/// use rusty_ai::data::dataset::Dataset;
+/// use rand::prelude::*;
+///
+/// // Define a dataset with input features of type f64 and target values of type u32
+/// let x = DMatrix::from_row_slice(3, 2, &[1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
+/// let y = DVector::from_vec(vec![0, 1, 0]);
+/// let dataset = Dataset::new(x, y);
+///
+/// // Split the dataset into training and testing sets
+/// let (mut train_set, test_set) = dataset.train_test_split(0.8, Some(42)).unwrap();
+///
+/// // Standardize the input features of the dataset
+/// train_set.standardize();
+///
+/// // Split the dataset based on a threshold value
+/// let (left_set, right_set) = dataset.split_on_threshold(0, 3.5);
+///
+/// // Sample a subset of the dataset
+/// let sample_set = dataset.samples(2, Some(123));
+/// ```
+
 impl<XT: Number, YT: TargetValue> Dataset<XT, YT> {
+    /// Creates a new dataset with the given input features and target values.
+    ///
+    /// # Arguments
+    ///
+    /// * `x` - The input features of the dataset.
+    /// * `y` - The target values of the dataset.
+    ///
+    /// # Returns
+    ///
+    /// A new `Dataset` instance.
     pub fn new(x: DMatrix<XT>, y: DVector<YT>) -> Self {
         Self { x, y }
     }
 
+    /// Splits the dataset into its constituent parts.
+    ///
+    /// # Returns
+    ///
+    /// A tuple containing references to the input features and target values of the dataset.
     pub fn into_parts(&self) -> (&DMatrix<XT>, &DVector<YT>) {
         (&self.x, &self.y)
     }
 
+    /// Checks if the dataset is not empty.
+    ///
+    /// # Returns
+    ///
+    /// `true` if the dataset is not empty, `false` otherwise.
     pub fn is_not_empty(&self) -> bool {
         !(self.x.is_empty() || self.y.is_empty())
     }
 
+    /// Returns the number of rows in the dataset.
+    ///
+    /// # Returns
+    ///
+    /// The number of rows in the dataset.
     pub fn nrows(&self) -> usize {
         self.x.nrows()
     }
 
+    /// Standardizes the input features of the dataset.
+    ///
+    /// This method calculates the mean and standard deviation of each input feature and
+    /// standardizes the values by subtracting the mean and dividing by the standard deviation.
+    ///
+    /// # Requirements
+    ///
+    /// The input features (`XT`) must implement the `RealNumber` trait.
     pub fn standardize(&mut self)
     where
         XT: RealNumber,
@@ -133,6 +201,16 @@ impl<XT: Number, YT: TargetValue> Dataset<XT, YT> {
         self.x = DMatrix::from_columns(&standardized_cols);
     }
 
+    /// Splits the dataset into training and testing sets.
+    ///
+    /// # Arguments
+    ///
+    /// * `train_size` - The proportion of the dataset to use for training. Should be between 0.0 and 1.0.
+    /// * `seed` - An optional seed value for the random number generator.
+    ///
+    /// # Returns
+    ///
+    /// A result containing the training and testing datasets, or an error if the train size is invalid.
     pub fn train_test_split(
         &self,
         train_size: f64,
@@ -176,6 +254,20 @@ impl<XT: Number, YT: TargetValue> Dataset<XT, YT> {
         Ok((train_dataset, test_dataset))
     }
 
+    /// Splits the dataset based on a threshold value.
+    ///
+    /// This method partitions the dataset into two subsets based on the specified feature index and threshold value.
+    /// The left subset contains rows where the feature value is less than or equal to the threshold,
+    /// while the right subset contains rows where the feature value is greater than the threshold.
+    ///
+    /// # Arguments
+    ///
+    /// * `feature_index` - The index of the feature to split on.
+    /// * `threshold` - The threshold value for the split.
+    ///
+    /// # Returns
+    ///
+    /// A tuple containing the left and right subsets of the dataset.
     pub fn split_on_threshold(&self, feature_index: usize, threshold: XT) -> (Self, Self) {
         let (left_indices, right_indices): (Vec<_>, Vec<_>) = self
             .x
@@ -216,6 +308,18 @@ impl<XT: Number, YT: TargetValue> Dataset<XT, YT> {
         (left_dataset, right_dataset)
     }
 
+    /// Samples a subset of the dataset.
+    ///
+    /// This method randomly selects a specified number of rows from the dataset to create a new subset.
+    ///
+    /// # Arguments
+    ///
+    /// * `sample_size` - The number of rows to sample.
+    /// * `seed` - An optional seed value for the random number generator.
+    ///
+    /// # Returns
+    ///
+    /// A new dataset containing the sampled subset.
     pub fn samples(&self, sample_size: usize, seed: Option<u64>) -> Self {
         let mut rng = match seed {
             Some(seed) => StdRng::seed_from_u64(seed),
