@@ -10,6 +10,12 @@ pub struct LogisticRegression<XT: RealNumber, YT: WholeNumber> {
     _marker: PhantomData<YT>,
 }
 
+impl<XT: RealNumber, YT: WholeNumber> Default for LogisticRegression<XT, YT> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<XT: RealNumber, YT: WholeNumber> LogisticRegression<XT, YT> {
     pub fn new() -> Self {
         Self {
@@ -65,7 +71,7 @@ impl<XT: RealNumber, YT: WholeNumber> LogisticRegression<XT, YT> {
         let (x, y) = dataset.into_parts();
 
         let epsilon = epsilon.unwrap_or_else(|| XT::from_f64(1e-6).unwrap());
-        let initial_max_steps = max_steps.clone();
+        let initial_max_steps = max_steps;
         let x_with_bias = x.clone().insert_column(0, XT::from_f64(1.0).unwrap());
         while max_steps > 0 {
             let weights_prev = self.weights.clone();

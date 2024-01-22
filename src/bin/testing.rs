@@ -89,7 +89,7 @@ fn test_tree_classifier(
     test_dataset: &Dataset<f64, u8>,
 ) -> Result<(), Box<dyn Error>> {
     let mut classifier = DecisionTreeClassifier::with_params(None, None, None)?;
-    classifier.fit(&train_dataset)?;
+    classifier.fit(train_dataset)?;
     let predictions = classifier.predict(&test_dataset.x)?;
     let mut correct = 0;
     for (prediction, actual) in predictions.iter().zip(test_dataset.y.iter()) {
@@ -186,7 +186,7 @@ fn test_naive_bayes_gaussian(
     test_dataset: &Dataset<f64, u8>,
 ) -> Result<String, Box<dyn Error>> {
     let mut classifier = GaussianNB::new();
-    classifier.fit(&train_dataset)?;
+    classifier.fit(train_dataset)?;
     let predictions = classifier.predict(&test_dataset.x)?;
     let mut correct = 0;
     for (prediction, actual) in predictions.iter().zip(test_dataset.y.iter()) {
@@ -216,7 +216,7 @@ fn test_linear_regression(
 }
 
 fn main() {
-    let mut dataset = match read_file_classification("datasets/covtype.csv", 54, true) {
+    let dataset = match read_file_classification("datasets/covtype.csv", 54, true) {
         Ok(dataset) => {
             println!("Loaded dataset");
             dataset

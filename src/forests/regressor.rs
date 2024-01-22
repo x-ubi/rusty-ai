@@ -138,7 +138,7 @@ impl<T: RealNumber> RandomForestRegressor<T> {
                     features.ncols(),
                     features.row(i).transpose().as_slice(),
                 ))?;
-                total_prediction = total_prediction + prediction[0];
+                total_prediction += prediction[0];
             }
 
             predictions[i] = total_prediction / T::from_usize(self.trees().len()).unwrap();

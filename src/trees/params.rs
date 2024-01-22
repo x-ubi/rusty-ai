@@ -6,6 +6,12 @@ pub struct TreeParams {
     pub max_depth: Option<u16>,
 }
 
+impl Default for TreeParams {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TreeParams {
     pub fn new() -> Self {
         Self {
@@ -43,6 +49,12 @@ impl TreeParams {
 pub struct TreeClassifierParams {
     pub base_params: TreeParams,
     pub criterion: String,
+}
+
+impl Default for TreeClassifierParams {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TreeClassifierParams {

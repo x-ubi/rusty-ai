@@ -217,7 +217,7 @@ impl<XT: Number, YT: WholeNumber> DecisionTreeClassifier<XT, YT> {
             }
         }
 
-        best_split.ok_or(String::from("No split found.").into())
+        best_split.ok_or(String::from("No split found."))
     }
 
     fn calculate_information_gain(

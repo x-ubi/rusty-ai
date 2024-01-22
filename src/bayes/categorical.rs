@@ -11,6 +11,12 @@ pub struct CategoricalNB<T: WholeNumber> {
     unique_feature_values_count: Vec<usize>,
 }
 
+impl<T: WholeNumber> Default for CategoricalNB<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T: WholeNumber> CategoricalNB<T> {
     pub fn new() -> Self {
         Self {

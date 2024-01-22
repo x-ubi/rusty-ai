@@ -12,6 +12,12 @@ pub struct LinearRegression<T: RealNumber> {
 
 impl<T: RealNumber> RegressionMetrics<T> for LinearRegression<T> {}
 
+impl<T: RealNumber> Default for LinearRegression<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T: RealNumber> LinearRegression<T> {
     pub fn new() -> Self {
         Self {
@@ -63,7 +69,7 @@ impl<T: RealNumber> LinearRegression<T> {
         let (x, y) = dataset.into_parts();
 
         let epsilon = epsilon.unwrap_or_else(|| T::from_f64(1e-6).unwrap());
-        let initial_max_steps = max_steps.clone();
+        let initial_max_steps = max_steps;
         let x_with_bias = x.clone().insert_column(0, T::from_f64(1.0).unwrap());
         while max_steps > 0 {
             let weights_prev = self.weights.clone();

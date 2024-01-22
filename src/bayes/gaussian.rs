@@ -11,6 +11,12 @@ pub struct GaussianNB<XT: RealNumber, YT: WholeNumber> {
     class_variance: HashMap<YT, DVector<XT>>,
 }
 
+impl<XT: RealNumber, YT: WholeNumber> Default for GaussianNB<XT, YT> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<XT: RealNumber, YT: WholeNumber> GaussianNB<XT, YT> {
     pub fn new() -> Self {
         Self {
