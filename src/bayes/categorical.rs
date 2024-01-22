@@ -5,18 +5,6 @@ use std::{
     error::Error,
 };
 
-pub struct CategoricalNB<T: WholeNumber> {
-    feature_class_freq: HashMap<T, DVector<HashMap<T, f64>>>,
-    label_class_freq: HashMap<T, f64>,
-    unique_feature_values_count: Vec<usize>,
-}
-
-impl<T: WholeNumber> Default for CategoricalNB<T> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 /// Implementation of the Categorical Naive Bayes classifier.
 ///
 /// This struct represents a Categorical Naive Bayes classifier, which is a probabilistic
@@ -31,19 +19,31 @@ impl<T: WholeNumber> Default for CategoricalNB<T> {
 /// use nalgebra::{DMatrix, DVector};
 ///
 /// // Create a new CategoricalNB classifier
-/// let mut classifier = CategoricalNB::new();
+/// let mut model = CategoricalNB::new();
 ///
 /// // Fit the classifier to a dataset
 /// let x = DMatrix::from_row_slice(2, 3, &[1, 2, 3, 2, 3, 4]);
 /// let y = DVector::from_vec(vec![0, 1]);
 /// let dataset = Dataset::new(x, y);
-/// classifier.fit(&dataset).unwrap();
+/// model.fit(&dataset).unwrap();
 ///
 /// // Predict the class labels for new data
 /// let x_test = DMatrix::from_row_slice(2, 3, &[1, 3, 4, 2, 2, 3]);
-/// let predictions = classifier.predict(&x_test).unwrap();
+/// let predictions = model.predict(&x_test).unwrap();
 /// assert_eq!(predictions, DVector::from_vec(vec![1,0]))
 /// ```
+
+pub struct CategoricalNB<T: WholeNumber> {
+    feature_class_freq: HashMap<T, DVector<HashMap<T, f64>>>,
+    label_class_freq: HashMap<T, f64>,
+    unique_feature_values_count: Vec<usize>,
+}
+
+impl<T: WholeNumber> Default for CategoricalNB<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl<T: WholeNumber> CategoricalNB<T> {
     /// Creates a new instance of the CategoricalNB classifier.

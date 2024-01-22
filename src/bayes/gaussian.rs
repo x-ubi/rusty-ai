@@ -5,23 +5,16 @@ use std::{
     error::Error,
 };
 
-pub struct GaussianNB<XT: RealNumber, YT: WholeNumber> {
-    class_freq: HashMap<YT, XT>,
-    class_mean: HashMap<YT, DVector<XT>>,
-    class_variance: HashMap<YT, DVector<XT>>,
-}
-
-impl<XT: RealNumber, YT: WholeNumber> Default for GaussianNB<XT, YT> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 /// Implementation of Gaussian Naive Bayes classifier.
 ///
 /// This struct represents a Gaussian Naive Bayes classifier. It is used to fit a training dataset
 /// and make predictions on new data points. The classifier assumes that the features are
 /// independent and follow a Gaussian distribution.
+///
+/// # Type Parameters
+///
+/// * `XT`: The type of the input features.
+/// * `YT`: The type of the target labels.
 ///
 /// # Example
 ///
@@ -47,6 +40,19 @@ impl<XT: RealNumber, YT: WholeNumber> Default for GaussianNB<XT, YT> {
 /// let predictions = classifier.predict(&x_test);
 /// assert!(predictions.is_ok());
 /// ```
+
+#[derive(Clone, Debug)]
+pub struct GaussianNB<XT: RealNumber, YT: WholeNumber> {
+    class_freq: HashMap<YT, XT>,
+    class_mean: HashMap<YT, DVector<XT>>,
+    class_variance: HashMap<YT, DVector<XT>>,
+}
+
+impl<XT: RealNumber, YT: WholeNumber> Default for GaussianNB<XT, YT> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl<XT: RealNumber, YT: WholeNumber> GaussianNB<XT, YT> {
     /// Creates a new Gaussian Naive Bayes classifier.
