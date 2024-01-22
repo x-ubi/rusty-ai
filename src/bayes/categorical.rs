@@ -17,7 +17,43 @@ impl<T: WholeNumber> Default for CategoricalNB<T> {
     }
 }
 
+/// Implementation of the Categorical Naive Bayes classifier.
+///
+/// This struct represents a Categorical Naive Bayes classifier, which is a probabilistic
+/// classifier that assumes independence between features given the class label. It is
+/// specifically designed for categorical features.
+///
+/// # Example
+///
+/// ```
+/// use rusty_ai::bayes::categorical::CategoricalNB;
+/// use rusty_ai::data::dataset::Dataset;
+/// use nalgebra::{DMatrix, DVector};
+///
+/// // Create a new CategoricalNB classifier
+/// let mut classifier = CategoricalNB::new();
+///
+/// // Fit the classifier to a dataset
+/// let x = DMatrix::from_row_slice(2, 3, &[1, 2, 3, 2, 3, 4]);
+/// let y = DVector::from_vec(vec![0, 1]);
+/// let dataset = Dataset::new(x, y);
+/// classifier.fit(&dataset).unwrap();
+///
+/// // Predict the class labels for new data
+/// let x_test = DMatrix::from_row_slice(2, 3, &[1, 3, 4, 2, 2, 3]);
+/// let predictions = classifier.predict(&x_test).unwrap();
+/// assert_eq!(predictions, DVector::from_vec(vec![1,0]))
+/// ```
+
 impl<T: WholeNumber> CategoricalNB<T> {
+    /// Creates a new instance of the CategoricalNB classifier.
+    ///
+    /// This function initializes the classifier with empty frequency maps and an empty
+    /// vector to store the count of unique feature values.
+    ///
+    /// # Returns
+    ///
+    /// A new instance of the CategoricalNB classifier.
     pub fn new() -> Self {
         Self {
             feature_class_freq: HashMap::new(),
@@ -26,14 +62,44 @@ impl<T: WholeNumber> CategoricalNB<T> {
         }
     }
 
+    /// Returns a reference to the feature class frequency map.
+    ///
+    /// This function returns a reference to the map that stores the frequency of each
+    /// feature value for each class label.
+    ///
+    /// # Returns
+    ///
+    /// A reference to the feature class frequency map.
     pub fn feature_class_freq(&self) -> &HashMap<T, DVector<HashMap<T, f64>>> {
         &self.feature_class_freq
     }
 
+    /// Returns a reference to the label class frequency map.
+    ///
+    /// This function returns a reference to the map that stores the frequency of each
+    /// class label.
+    ///
+    /// # Returns
+    ///
+    /// A reference to the label class frequency map.
     pub fn label_class_freq(&self) -> &HashMap<T, f64> {
         &self.label_class_freq
     }
 
+    /// Fits the classifier to a dataset.
+    ///
+    /// This function fits the classifier to the given dataset by calculating the
+    /// frequency of each feature value for each class label and the frequency of each
+    /// class label. It also calculates the count of unique feature values for each
+    /// feature.
+    ///
+    /// # Arguments
+    ///
+    /// * `dataset` - The dataset to fit the classifier to.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` indicating whether the fitting process was successful or an error occurred.
     pub fn fit(&mut self, dataset: &Dataset<T, T>) -> Result<String, Box<dyn Error>> {
         let (x, y) = dataset.into_parts();
         let y_classes = y.iter().cloned().collect::<HashSet<_>>();
@@ -118,6 +184,21 @@ impl<T: WholeNumber> CategoricalNB<T> {
         Ok(max_class)
     }
 
+    /// Predicts the class labels for a matrix of feature values.
+    ///
+    /// This function predicts the class labels for each row in the given matrix of
+    /// feature values. It uses the fitted model to calculate the probability of each
+    /// class label for each row and selects the class label with the highest probability
+    /// as the predicted label.
+    ///
+    /// # Arguments
+    ///
+    /// * `x` - The matrix of feature values.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` containing a vector of predicted class labels or an error if the
+    /// prediction process failed.
     pub fn predict(&self, x: &DMatrix<T>) -> Result<DVector<T>, Box<dyn Error>> {
         let mut y_pred = Vec::new();
 

@@ -17,7 +17,46 @@ impl<XT: RealNumber, YT: WholeNumber> Default for GaussianNB<XT, YT> {
     }
 }
 
+/// Implementation of Gaussian Naive Bayes classifier.
+///
+/// This struct represents a Gaussian Naive Bayes classifier. It is used to fit a training dataset
+/// and make predictions on new data points. The classifier assumes that the features are
+/// independent and follow a Gaussian distribution.
+///
+/// # Example
+///
+/// ```
+/// use rusty_ai::bayes::gaussian::GaussianNB;
+/// use rusty_ai::data::dataset::Dataset;
+/// use nalgebra::{DMatrix, DVector};
+///
+/// // Create a new Gaussian Naive Bayes classifier
+/// let mut classifier = GaussianNB::new();
+///
+/// // Create a training dataset
+/// let x = DMatrix::from_row_slice(3, 2, &[1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
+/// let y = DVector::from_vec(vec![0, 1, 0]);
+/// let dataset = Dataset::new(x, y);
+///
+/// // Fit the classifier to the training dataset
+/// let result = classifier.fit(&dataset);
+/// assert!(result.is_ok());
+///
+/// // Make predictions on new data points
+/// let x_test = DMatrix::from_row_slice(2, 2, &[1.0, 2.0, 3.0, 4.0]);
+/// let predictions = classifier.predict(&x_test);
+/// assert!(predictions.is_ok());
+/// ```
+
 impl<XT: RealNumber, YT: WholeNumber> GaussianNB<XT, YT> {
+    /// Creates a new Gaussian Naive Bayes classifier.
+    ///
+    /// This function initializes the classifier with empty class frequency, mean, and variance
+    /// maps.
+    ///
+    /// # Returns
+    ///
+    /// A new instance of `GaussianNB`.
     pub fn new() -> Self {
         Self {
             class_freq: HashMap::new(),
@@ -26,18 +65,54 @@ impl<XT: RealNumber, YT: WholeNumber> GaussianNB<XT, YT> {
         }
     }
 
+    /// Returns a reference to the class frequency map.
+    ///
+    /// This function returns a reference to the map that stores the frequency of each class in
+    /// the training dataset.
+    ///
+    /// # Returns
+    ///
+    /// A reference to the class frequency map.
     pub fn class_freq(&self) -> &HashMap<YT, XT> {
         &self.class_freq
     }
 
+    /// Returns a reference to the class mean map.
+    ///
+    /// This function returns a reference to the map that stores the mean values of each feature
+    /// for each class in the training dataset.
+    ///
+    /// # Returns
+    ///
+    /// A reference to the class mean map.
     pub fn class_mean(&self) -> &HashMap<YT, DVector<XT>> {
         &self.class_mean
     }
 
+    /// Returns a reference to the class variance map.
+    ///
+    /// This function returns a reference to the map that stores the variance values of each
+    /// feature for each class in the training dataset.
+    ///
+    /// # Returns
+    ///
+    /// A reference to the class variance map.
     pub fn class_variance(&self) -> &HashMap<YT, DVector<XT>> {
         &self.class_variance
     }
 
+    /// Fits the classifier to a training dataset.
+    ///
+    /// This function fits the classifier to the provided training dataset. It calculates the
+    /// class frequency, mean, and variance for each class in the dataset.
+    ///
+    /// # Arguments
+    ///
+    /// * `dataset` - The training dataset to fit the classifier to.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` indicating whether the fitting process was successful or an error occurred.
     pub fn fit(&mut self, dataset: &Dataset<XT, YT>) -> Result<String, Box<dyn Error>> {
         let (x, y) = dataset.into_parts();
         let classes = y.iter().cloned().collect::<HashSet<_>>();
@@ -121,6 +196,19 @@ impl<XT: RealNumber, YT: WholeNumber> GaussianNB<XT, YT> {
         Ok(max_class)
     }
 
+    /// Predicts the class labels for a given matrix of feature vectors.
+    ///
+    /// This function predicts the class labels for each feature vector in the input matrix using
+    /// the fitted Gaussian Naive Bayes classifier. It returns a vector of predicted class labels.
+    ///
+    /// # Arguments
+    ///
+    /// * `x` - The matrix of feature vectors to predict the class labels for.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` containing a vector of predicted class labels or an error if the prediction
+    /// process fails.
     pub fn predict(&self, x: &DMatrix<XT>) -> Result<DVector<YT>, Box<dyn Error>> {
         let mut y_pred = Vec::new();
 
