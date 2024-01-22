@@ -133,16 +133,27 @@ impl<XT: Number, YT: WholeNumber> DecisionTreeClassifier<XT, YT> {
                 })
                 .collect::<Vec<_>>();
 
-            let mut opt_best_split: Option<SplitData<XT, YT>> = None;
-            let mut best_gain = f64::NEG_INFINITY;
-            for split_result in splits {
-                let split = split_result?;
-                if split.information_gain > best_gain {
-                    best_gain = split.information_gain;
-                    opt_best_split = Some(split);
-                }
+            let valid_splits = splits
+                .into_iter()
+                .filter_map(Result::ok)
+                .collect::<Vec<_>>();
+
+            if valid_splits.is_empty() {
+                return Ok(TreeNode::new(self.leaf_value(y.clone_owned())));
             }
-            let best_split = opt_best_split.ok_or("No best split found.")?;
+
+            let best_split = match valid_splits.into_iter().max_by(|split1, split2| {
+                split1
+                    .information_gain
+                    .partial_cmp(&split2.information_gain)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            }) {
+                Some(split) => split,
+                _ => {
+                    return Err("No best split found.".into());
+                }
+            };
+
             let left_child = best_split.left;
             let right_child = best_split.right;
             if best_split.information_gain > 0.0 {
@@ -206,7 +217,7 @@ impl<XT: Number, YT: WholeNumber> DecisionTreeClassifier<XT, YT> {
             }
         }
 
-        best_split.ok_or("No best split found.".into())
+        best_split.ok_or(String::from("No split found.").into())
     }
 
     fn calculate_information_gain(

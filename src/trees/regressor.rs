@@ -121,16 +121,26 @@ impl<T: RealNumber> DecisionTreeRegressor<T> {
                 .map(|feature_idx| self.get_split(dataset, feature_idx))
                 .collect::<Vec<_>>();
 
-            let mut opt_best_split: Option<SplitData<T>> = None;
-            let mut best_gain = f64::NEG_INFINITY;
-            for split_result in splits {
-                let split = split_result?;
-                if split.information_gain > best_gain {
-                    best_gain = split.information_gain;
-                    opt_best_split = Some(split);
-                }
+            let valid_splits = splits
+                .into_iter()
+                .filter_map(Result::ok)
+                .collect::<Vec<_>>();
+
+            if valid_splits.is_empty() {
+                return Ok(TreeNode::new(Some(self.mean(y))));
             }
-            let best_split = opt_best_split.ok_or("No best split found.")?;
+
+            let best_split = match valid_splits.into_iter().max_by(|split1, split2| {
+                split1
+                    .information_gain
+                    .partial_cmp(&split2.information_gain)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            }) {
+                Some(split) => split,
+                _ => {
+                    return Err("No best split found.".into());
+                }
+            };
             let left_child = best_split.left;
             let right_child = best_split.right;
             if best_split.information_gain > 0.0 {
@@ -182,7 +192,7 @@ impl<T: RealNumber> DecisionTreeRegressor<T> {
                 }
             }
         }
-        best_split.ok_or("No best split found.".into())
+        best_split.ok_or("No split found.".into())
     }
 
     fn calculate_variance_reduction(
@@ -262,21 +272,6 @@ mod tests {
         assert_eq!(predictions.len(), 3);
         assert!(predictions.iter().all(|&x| x >= 0.0));
     }
-
-    // #[test]
-    // fn test_fit_and_predict_with_multiple_rows() {
-    //     let x = DMatrix::from_vec(3, 2, vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
-    //     let y = DVector::from_vec(vec![1.0, 4.0, 9.0]);
-    //     let dataset = Dataset::new(x, y);
-    //     let mut regressor: DecisionTreeRegressor<f64> = DecisionTreeRegressor::new();
-    //     let _ = regressor.fit(&dataset);
-
-    //     let test_x = DMatrix::from_vec(3, 2, vec![2.0, 3.0, 4.0, 5.0, 6.0]);
-    //     let predictions = regressor.predict(&test_x).unwrap();
-
-    //     assert_eq!(predictions.len(), 3);
-    //     assert!(predictions.iter().all(|&x| x >= 0.0));
-    // }
 
     #[test]
     fn test_fit_and_predict_with_single_row() {
