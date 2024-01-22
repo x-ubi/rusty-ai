@@ -109,7 +109,7 @@ fn test_tree_regressor(
     train_dataset: &Dataset<f64, f64>,
     test_dataset: &Dataset<f64, f64>,
 ) -> Result<String, Box<dyn Error>> {
-    let mut regressor = DecisionTreeRegressor::with_params(None, Some(3));
+    let mut regressor = DecisionTreeRegressor::with_params(None, Some(3))?;
 
     regressor.fit(train_dataset)?;
 
@@ -125,7 +125,13 @@ fn test_random_forest_classifier(
     train_dataset: &Dataset<f64, u8>,
     test_dataset: &Dataset<f64, u8>,
 ) -> Result<String, Box<dyn Error>> {
-    let mut classifier = RandomForestClassifier::new();
+    let mut classifier = RandomForestClassifier::with_params(
+        Some(400),
+        Some(20),
+        Some(5),
+        Some("gini".to_string()),
+        Some(train_dataset.nrows() / 100),
+    )?;
     println!("{:?}", classifier.fit(train_dataset, None));
     let predictions = classifier.predict(&test_dataset.x)?;
     let mut correct = 0;
@@ -158,7 +164,7 @@ fn test_logistic_regression(
     train_dataset: &Dataset<f64, u8>,
     test_dataset: &Dataset<f64, u8>,
 ) -> Result<String, Box<dyn Error>> {
-    let mut classifier = LogisticRegression::new(Some(30), None)?;
+    let mut classifier = LogisticRegression::with_params(Some(30), None)?;
     println!(
         "{}",
         classifier.fit(train_dataset, 0.1, 10000, Some(1e-8), Some(1000))?
@@ -197,11 +203,11 @@ fn test_linear_regression(
     train_dataset: &Dataset<f64, f64>,
     test_dataset: &Dataset<f64, f64>,
 ) -> Result<String, Box<dyn Error>> {
-    let mut regressor = LinearRegression::new(Some(8), None)?;
+    let mut regressor = LinearRegression::with_params(Some(8), None)?;
 
     println!(
         "{}",
-        regressor.fit(train_dataset, 0.01, 10000, Some(1e-9), Some(1000))?
+        regressor.fit(train_dataset, 0.001, 100000, Some(1e-9), Some(1000))?
     );
 
     let predictions = regressor.predict(&test_dataset.x)?;
@@ -210,21 +216,18 @@ fn test_linear_regression(
 }
 
 fn main() {
-    let mut dataset = match read_file_regression("datasets/california_housing.csv", 8, true) {
+    let mut dataset = match read_file_classification("datasets/covtype.csv", 54, true) {
         Ok(dataset) => {
             println!("Loaded dataset");
             dataset
         }
         Err(err) => panic!("{}", err),
     };
-    dataset.standardize();
+    // dataset.standardize();
 
     let (train_dataset, test_dataset) = match dataset.train_test_split(0.75, None) {
         Ok(datasets) => datasets,
         Err(err) => panic!("{}", err),
     };
-    println!(
-        "{:?}",
-        test_random_forest_regressor(&train_dataset, &test_dataset)
-    );
+    println!("{:?}", test_tree_classifier(&train_dataset, &test_dataset));
 }
