@@ -168,3 +168,111 @@ impl<XT: Number, YT: WholeNumber> RandomForestClassifier<XT, YT> {
         Ok(predictions)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn create_mock_dataset() -> Dataset<f64, u8> {
+        let x = DMatrix::from_row_slice(
+            6,
+            2,
+            &[1.0, 2.0, 1.1, 2.1, 1.2, 2.2, 3.0, 4.0, 3.1, 4.1, 3.2, 4.2],
+        );
+        let y = DVector::from_vec(vec![0, 0, 0, 1, 1, 1]);
+        Dataset::new(x, y)
+    }
+
+    #[test]
+    fn test_default() {
+        let forest = RandomForestClassifier::<f64, u8>::default();
+        assert_eq!(forest.num_trees(), 3); // Default number of trees
+        assert_eq!(forest.min_samples_split(), 2); // Default min_samples_split
+    }
+
+    #[test]
+    fn test_new() {
+        let forest = RandomForestClassifier::<f64, u8>::new();
+        assert_eq!(forest.num_trees(), 3); // Default number of trees
+        assert_eq!(forest.min_samples_split(), 2); // Default min_samples_split
+    }
+
+    #[test]
+    fn test_with_params() {
+        let forest = RandomForestClassifier::<f64, u8>::with_params(
+            Some(10),                    // num_trees
+            Some(4),                     // min_samples_split
+            Some(5),                     // max_depth
+            Some("entropy".to_string()), // criterion
+            Some(100),                   // sample_size
+        )
+        .unwrap();
+        assert_eq!(forest.num_trees(), 10);
+        assert_eq!(forest.min_samples_split(), 4);
+        assert_eq!(forest.max_depth(), Some(5));
+        assert_eq!(forest.criterion(), "entropy");
+        assert_eq!(forest.sample_size(), Some(100));
+    }
+
+    #[test]
+    fn test_too_low_sample_size() {
+        let forest = RandomForestClassifier::<f64, u8>::new().set_sample_size(Some(0));
+        assert!(forest.is_err());
+        assert_eq!(
+            forest.unwrap_err().to_string(),
+            "The sample size must be greater than 0."
+        );
+    }
+
+    #[test]
+    fn test_too_low_num_trees() {
+        let forest = RandomForestClassifier::<f64, u8>::new().set_num_trees(1);
+        assert!(forest.is_err());
+        assert_eq!(
+            forest.unwrap_err().to_string(),
+            "The number of trees must be greater than 1."
+        );
+    }
+
+    #[test]
+    fn test_fit() {
+        let mut forest = RandomForestClassifier::<f64, u8>::new();
+        let dataset = create_mock_dataset();
+        let fit_result = forest.fit(&dataset, Some(42)); // Using a fixed seed for reproducibility
+        assert!(fit_result.is_ok());
+        assert_eq!(forest.trees().len(), 3); // Should have 3 trees after fitting
+    }
+
+    #[test]
+    fn test_fit_too_many_samples() {
+        let mut forest = RandomForestClassifier::<f64, u8>::new();
+        let _ = forest.set_sample_size(Some(1000));
+        let dataset = create_mock_dataset();
+        let fit_result = forest.fit(&dataset, Some(42)); // Using a fixed seed for reproducibility
+
+        assert!(fit_result.is_err());
+        assert_eq!(
+            fit_result.unwrap_err().to_string(),
+            "The set sample size is greater than the dataset size. 1000 > 6"
+        );
+    }
+
+    #[test]
+    fn test_predict() {
+        let mut forest = RandomForestClassifier::<f64, u8>::new();
+        let _ = forest.set_sample_size(Some(3));
+        let dataset = create_mock_dataset();
+        forest.fit(&dataset, Some(42)).unwrap();
+
+        let features = DMatrix::from_row_slice(
+            2,
+            2,
+            &[
+                1.0, 2.0, // Should be classified as class 0
+                3.0, 4.0, // Should be classified as class 1
+            ],
+        );
+        let predictions = forest.predict(&features).unwrap();
+        assert_eq!(predictions, DVector::from_vec(vec![0, 1]));
+    }
+}

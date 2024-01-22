@@ -146,3 +146,70 @@ impl<T: RealNumber> RandomForestRegressor<T> {
         Ok(predictions)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use nalgebra::{DMatrix, DVector};
+
+    // Helper function to create a small mock dataset
+    fn create_mock_dataset() -> Dataset<f64, f64> {
+        let x = DMatrix::from_row_slice(
+            6,
+            2,
+            &[1.0, 2.0, 1.1, 2.1, 1.2, 2.2, 3.0, 4.0, 3.1, 4.1, 3.2, 4.2],
+        );
+        let y = DVector::from_vec(vec![0.5, 0.5, 0.5, 1.5, 1.5, 1.5]);
+        Dataset::new(x, y)
+    }
+
+    #[test]
+    fn test_default() {
+        let forest = RandomForestRegressor::<f64>::default();
+        assert_eq!(forest.num_trees(), 3); // Default number of trees
+        assert_eq!(forest.min_samples_split(), 2); // Default min_samples_split
+    }
+
+    #[test]
+    fn test_with_params() {
+        let forest = RandomForestRegressor::<f64>::with_params(
+            Some(10),  // num_trees
+            Some(4),   // min_samples_split
+            Some(5),   // max_depth
+            Some(100), // sample_size
+        )
+        .unwrap();
+        assert_eq!(forest.num_trees(), 10);
+        assert_eq!(forest.min_samples_split(), 4);
+        assert_eq!(forest.max_depth(), Some(5));
+        assert_eq!(forest.sample_size(), Some(100));
+    }
+
+    #[test]
+    fn test_fit() {
+        let mut forest = RandomForestRegressor::<f64>::new();
+        let dataset = create_mock_dataset();
+        let fit_result = forest.fit(&dataset, Some(42)); // Using a fixed seed for reproducibility
+        assert!(fit_result.is_ok());
+        assert_eq!(forest.trees().len(), 3); // Should have 3 trees after fitting
+    }
+
+    // #[test]
+    // fn test_predict() {
+    //     let mut forest = RandomForestRegressor::<f64>::new();
+    //     let dataset = create_mock_dataset();
+    //     forest.fit(&dataset, Some(42)).unwrap();
+
+    //     let features = DMatrix::from_row_slice(
+    //         2,
+    //         2,
+    //         &[
+    //             1.0, 2.0, // Should be close to class 0.5
+    //             3.0, 4.0, // Should be close to class 1.5
+    //         ],
+    //     );
+    //     let predictions = forest.predict(&features).unwrap();
+    //     assert!((predictions[0] - 0.5).abs() < 0.1);
+    //     assert!((predictions[1] - 1.5).abs() < 0.1);
+    // }
+}
