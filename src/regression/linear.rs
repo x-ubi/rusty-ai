@@ -79,7 +79,7 @@ impl<T: RealNumber> LinearRegression<T> {
     ///
     /// # Returns
     ///
-    /// Returns a `Result` containing the `LinearRegression` model if the parameters are valid, or an error message if the parameters are invalid.
+    /// A `Result` containing the `LinearRegression` model if the parameters are valid, or an error message if the parameters are invalid.
     ///
     /// # Errors
     ///
@@ -104,7 +104,7 @@ impl<T: RealNumber> LinearRegression<T> {
         }
     }
 
-    /// Returns a reference to the weights of the linear regression model.
+    /// A reference to the weights of the linear regression model.
     pub fn weights(&self) -> &DVector<T> {
         &self.weights
     }
@@ -117,7 +117,7 @@ impl<T: RealNumber> LinearRegression<T> {
     ///
     /// # Returns
     ///
-    /// Returns a `Result` containing the predicted target values if successful, or an error message if an error occurs during prediction.
+    /// A `Result` containing the predicted target values if successful, or an error message if an error occurs during prediction.
     pub fn predict(&self, x_pred: &DMatrix<T>) -> Result<DVector<T>, Box<dyn Error>> {
         let x_pred_with_bias = x_pred.clone().insert_column(0, T::from_f64(1.0).unwrap());
         Ok(self.h(&x_pred_with_bias))
@@ -135,7 +135,7 @@ impl<T: RealNumber> LinearRegression<T> {
     ///
     /// # Returns
     ///
-    /// Returns a `Result` containing a success message if training is successful, or an error message if an error occurs during training.
+    /// A `Result` containing a success message if training is successful, or an error message if an error occurs during training.
     ///
     /// # Errors
     ///

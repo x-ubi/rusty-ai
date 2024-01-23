@@ -38,7 +38,7 @@ use nalgebra::{DMatrix, DVector};
 /// let result = model.fit(&dataset, lr, max_steps, epsilon, progress);
 ///
 /// // Make predictions using the trained model
-/// let x_pred = /* ... */;
+/// let x_pred = DMatrix::from_row_slice(2, 2, &[1.0, 2.0, 3.0, 4.0]);
 /// let predictions = model.predict(&x_pred);
 /// ```
 
@@ -114,17 +114,17 @@ impl<XT: RealNumber, YT: WholeNumber> LogisticRegression<XT, YT> {
     ///
     /// # Returns
     ///
-    /// The predicted target labels.
-    pub fn predict(&self, x_pred: &DMatrix<XT>) -> DVector<YT> {
+    /// A `Result` containing the predicted target labels if successful, or an error message if an error occurs during prediction.
+    pub fn predict(&self, x_pred: &DMatrix<XT>) -> Result<DVector<YT>, Box<dyn Error>> {
         let x_pred_with_bias = x_pred.clone().insert_column(0, XT::from_f64(0.0).unwrap());
 
-        self.h(&x_pred_with_bias).map(|val| {
+        Ok(self.h(&x_pred_with_bias).map(|val| {
             if val > XT::from_f64(0.5).unwrap() {
                 YT::from_usize(1).unwrap()
             } else {
                 YT::from_usize(0).unwrap()
             }
-        })
+        }))
     }
 
     /// Fits the logistic regression model to a dataset.
@@ -345,7 +345,7 @@ mod tests {
         .unwrap();
 
         let features = DMatrix::from_row_slice(2, 2, &[1.0, 2.0, 3.0, 4.0]);
-        let predictions = model.predict(&features);
+        let predictions = model.predict(&features).unwrap();
 
         assert_eq!(predictions.len(), 2);
         assert!(predictions.iter().all(|&p| p == 0 || p == 1));
