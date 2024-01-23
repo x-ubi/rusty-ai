@@ -2,10 +2,13 @@
 name = "rusty-ai"
 description = "Rust Library for Machine Learning"
 authors = ["Jan Budziński <jan.budzinski.stud@pw.edu.pl>"]
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
-license = "Apache-2.0"
+license = "MIT OR Apache-2.0"
 readme = "README.md"
+
+keywords = ["machine-learning", "rusty-ai", "ai", "ml"]
+categories = ["algorithms", "science"]
 
 
 exclude = [
