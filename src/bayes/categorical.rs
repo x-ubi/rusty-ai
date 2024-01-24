@@ -1,4 +1,7 @@
-use crate::data::dataset::{Dataset, WholeNumber};
+use crate::{
+    data::dataset::{Dataset, WholeNumber},
+    metrics::confusion::ClassificationMetrics,
+};
 use nalgebra::{DMatrix, DVector};
 use std::{
     collections::{HashMap, HashSet},
@@ -44,6 +47,8 @@ impl<T: WholeNumber> Default for CategoricalNB<T> {
         Self::new()
     }
 }
+
+impl<T: WholeNumber> ClassificationMetrics<T> for CategoricalNB<T> {}
 
 impl<T: WholeNumber> CategoricalNB<T> {
     /// Creates a new instance of the CategoricalNB classifier.

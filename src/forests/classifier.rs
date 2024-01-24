@@ -1,4 +1,5 @@
 use crate::data::dataset::{Dataset, Number, WholeNumber};
+use crate::metrics::confusion::ClassificationMetrics;
 use crate::trees::classifier::DecisionTreeClassifier;
 use crate::trees::params::TreeClassifierParams;
 use nalgebra::{DMatrix, DVector};
@@ -15,6 +16,8 @@ pub struct RandomForestClassifier<XT: Number, YT: WholeNumber> {
     forest_params: ForestParams<DecisionTreeClassifier<XT, YT>>,
     tree_params: TreeClassifierParams,
 }
+
+impl<XT: Number, YT: WholeNumber> ClassificationMetrics<YT> for RandomForestClassifier<XT, YT> {}
 
 impl<XT: Number, YT: WholeNumber> Default for RandomForestClassifier<XT, YT> {
     fn default() -> Self {

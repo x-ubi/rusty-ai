@@ -1,4 +1,7 @@
-use crate::data::dataset::{Dataset, RealNumber, WholeNumber};
+use crate::{
+    data::dataset::{Dataset, RealNumber, WholeNumber},
+    metrics::confusion::ClassificationMetrics,
+};
 use nalgebra::{DMatrix, DVector};
 use std::{
     collections::{HashMap, HashSet},
@@ -47,6 +50,8 @@ pub struct GaussianNB<XT: RealNumber, YT: WholeNumber> {
     class_mean: HashMap<YT, DVector<XT>>,
     class_variance: HashMap<YT, DVector<XT>>,
 }
+
+impl<XT: RealNumber, YT: WholeNumber> ClassificationMetrics<YT> for GaussianNB<XT, YT> {}
 
 impl<XT: RealNumber, YT: WholeNumber> Default for GaussianNB<XT, YT> {
     fn default() -> Self {

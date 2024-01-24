@@ -1,6 +1,7 @@
 use super::node::TreeNode;
 use super::params::TreeClassifierParams;
 use crate::data::dataset::{Dataset, Number, WholeNumber};
+use crate::metrics::confusion::ClassificationMetrics;
 use nalgebra::{DMatrix, DVector};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::collections::{HashMap, HashSet};
@@ -61,6 +62,8 @@ pub struct DecisionTreeClassifier<XT: Number, YT: WholeNumber> {
 
     _marker: PhantomData<XT>,
 }
+
+impl<XT: Number, YT: WholeNumber> ClassificationMetrics<YT> for DecisionTreeClassifier<XT, YT> {}
 
 impl<XT: Number, YT: WholeNumber> Default for DecisionTreeClassifier<XT, YT> {
     fn default() -> Self {

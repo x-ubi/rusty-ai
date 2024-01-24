@@ -1,6 +1,9 @@
 use std::{error::Error, marker::PhantomData};
 
-use crate::data::dataset::{Dataset, RealNumber, WholeNumber};
+use crate::{
+    data::dataset::{Dataset, RealNumber, WholeNumber},
+    metrics::confusion::ClassificationMetrics,
+};
 use nalgebra::{DMatrix, DVector};
 
 /// Logistic regression model for binary classification.
@@ -48,6 +51,8 @@ pub struct LogisticRegression<XT: RealNumber, YT: WholeNumber> {
 
     _marker: PhantomData<YT>,
 }
+
+impl<XT: RealNumber, YT: WholeNumber> ClassificationMetrics<YT> for LogisticRegression<XT, YT> {}
 
 impl<XT: RealNumber, YT: WholeNumber> Default for LogisticRegression<XT, YT> {
     /// Creates a new instance of `LogisticRegression` with default values.
