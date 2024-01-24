@@ -263,7 +263,7 @@ mod tests {
 
     #[test]
     fn test_new() {
-        let model = LogisticRegression::<f64, u8>::new();
+        let model = LogisticRegression::<f64, u8>::default();
         assert_eq!(model.weights().len(), 3);
         assert!(model.weights().iter().all(|&w| w == 1.0));
     }
@@ -462,7 +462,7 @@ mod tests {
             DMatrix::from_row_slice(2, 2, &[1.0, 2.0, 3.0, 4.0]),
             DVector::from_vec(vec![0, 1]),
         );
-        let result = logistic_regression.fit(&dataset, 0.1, 100, Some(1e-6), None);
+        let result = logistic_regression.fit(&dataset, 0.1, 100, Some(1e-6), Some(50));
         assert!(result.is_ok());
     }
 }

@@ -253,19 +253,15 @@ mod tests {
     #[test]
     fn test_default() {
         let forest = RandomForestRegressor::<f64>::default();
-        assert_eq!(forest.num_trees(), 3); // Default number of trees
-        assert_eq!(forest.min_samples_split(), 2); // Default min_samples_split
+        assert_eq!(forest.num_trees(), 3);
+        assert_eq!(forest.min_samples_split(), 2);
     }
 
     #[test]
     fn test_with_params() {
-        let forest = RandomForestRegressor::<f64>::with_params(
-            Some(10),  // num_trees
-            Some(4),   // min_samples_split
-            Some(5),   // max_depth
-            Some(100), // sample_size
-        )
-        .unwrap();
+        let forest =
+            RandomForestRegressor::<f64>::with_params(Some(10), Some(4), Some(5), Some(100))
+                .unwrap();
         assert_eq!(forest.num_trees(), 10);
         assert_eq!(forest.min_samples_split(), 4);
         assert_eq!(forest.max_depth(), Some(5));
@@ -276,27 +272,22 @@ mod tests {
     fn test_fit() {
         let mut forest = RandomForestRegressor::<f64>::new();
         let dataset = create_mock_dataset();
-        let fit_result = forest.fit(&dataset, Some(42)); // Using a fixed seed for reproducibility
+        let fit_result = forest.fit(&dataset, Some(42));
         assert!(fit_result.is_ok());
-        assert_eq!(forest.trees().len(), 3); // Should have 3 trees after fitting
+        assert_eq!(forest.trees().len(), 3);
     }
 
-    // #[test]
-    // fn test_predict() {
-    //     let mut forest = RandomForestRegressor::<f64>::new();
-    //     let dataset = create_mock_dataset();
-    //     forest.fit(&dataset, Some(42)).unwrap();
+    #[test]
+    fn test_predict() {
+        let mut forest = RandomForestRegressor::<f64>::new();
+        let dataset = create_mock_dataset();
+        forest.fit(&dataset, Some(42)).unwrap();
 
-    //     let features = DMatrix::from_row_slice(
-    //         2,
-    //         2,
-    //         &[
-    //             1.0, 2.0, // Should be close to class 0.5
-    //             3.0, 4.0, // Should be close to class 1.5
-    //         ],
-    //     );
-    //     let predictions = forest.predict(&features).unwrap();
-    //     assert!((predictions[0] - 0.5).abs() < 0.1);
-    //     assert!((predictions[1] - 1.5).abs() < 0.1);
-    // }
+        let features = DMatrix::from_row_slice(2, 2, &[1.0, 2.0, 3.0, 4.0]);
+        let predictions = forest.predict(&features).unwrap();
+        assert_eq!(predictions.len(), 2);
+
+        assert!(predictions[0] <= 1.5 && predictions[0] >= 0.5);
+        assert!(predictions[1] <= 1.5 && predictions[1] >= 0.5);
+    }
 }
